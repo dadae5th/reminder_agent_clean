@@ -25,6 +25,7 @@ FREQ_MAP = {
     "daily": "daily", "일간": "daily", "매일": "daily",
     "weekly": "weekly", "주간": "weekly", "매주": "weekly",
     "monthly": "monthly", "월간": "monthly", "매월": "monthly",
+    "quarterly": "quarterly", "분기": "quarterly", "매분기": "quarterly",
 }
 
 def find_sheet(xl: pd.ExcelFile, candidates):
@@ -63,6 +64,8 @@ def calculate_due_date(frequency):
         return now + pd.Timedelta(weeks=1)
     elif frequency == "monthly":
         return now + pd.DateOffset(months=1)
+    elif frequency == "quarterly":
+        return now + pd.DateOffset(months=3)
     return None
 
 def import_users(df):
@@ -99,7 +102,7 @@ def import_tasks(df):
             assignee = str(row.get(a_col)).strip() if pd.notna(row.get(a_col)) else None
             assignee_email = str(row.get(ae_col)).strip() if pd.notna(row.get(ae_col)) else None
             freq  = normalize_freq(row.get(f_col))
-            if not title or freq not in ("daily","weekly","monthly"): continue
+            if not title or freq not in ("daily","weekly","monthly","quarterly"): continue
 
             due_date = calculate_due_date(freq).strftime("%Y-%m-%d")
 
