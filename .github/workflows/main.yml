@@ -39,3 +39,17 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
         run: |
           python run_all.py
+
+      - name: Send Daily Digest
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_SENDER_NAME: ${{ secrets.SMTP_SENDER_NAME }}
+          SMTP_SENDER_EMAIL: ${{ secrets.SMTP_SENDER_EMAIL }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+        run: |
+          python digest.py

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .chart-container {
+            width: 80%;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Task Dashboard</h1>
+    </header>
+    <div class="container">
+        <h2>Progress Overview</h2>
+        <div class="chart-container">
+            <canvas id="progressChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Example data, replace with dynamic data from your backend
+        const taskData = {
+            labels: ['Completed', 'Pending'],
+            datasets: [{
+                data: [70, 30], // Replace with actual data
+                backgroundColor: ['#28a745', '#ffc107'],
+            }]
+        };
+
+        const config = {
+            type: 'doughnut',
+            data: taskData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                },
+            },
+        };
+
+        const ctx = document.getElementById('progressChart').getContext('2d');
+        new Chart(ctx, config);
+    </script>
+</body>
+</html>
