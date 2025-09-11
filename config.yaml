@@ -1,0 +1,10 @@
+base_url: http://192.168.114.67:8510
+dashboard_url: http://192.168.114.67:8505
+smtp:
+  host: smtp.gmail.com
+  port: 465
+  user: dadae5th@gmail.com
+  pass: kptwwtdbavjgajly
+  sender_name: 해야할일 알림
+  sender_email: dadae5th@gmail.com
+secret: gBckLh5s3CSP5VIu6TPi0f1aic6tofQ9EFgrcwf24W1Zl4B2
