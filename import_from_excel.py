@@ -14,7 +14,8 @@ USER_COLS = {
 
 TASK_COLS = {
     "title": ["title", "업무", "업무명", "할일", "task", "내용"],
-    "assignee_email": ["assignee_email", "담당자이메일", "이메일", "메일", "email"],
+    "assignee": ["담당자"],  # '담당자' 열을 정확히 매핑
+    "assignee_email": ["담당자 이메일"],
     "frequency": ["frequency", "주기", "cycle"],
     "due_date": ["due_date", "마감일", "기한", "due", "deadline"],
     "start_date": ["start_date", "시작일", "시작일자", "시작일자"],
@@ -78,10 +79,12 @@ def import_users(df):
     return cnt
 
 def import_tasks(df):
-    t_col = find_col(df, TASK_COLS["title"])
+    t_col = df.columns[3]  # 4번째 열: 업무명
+    a_col = df.columns[6]  # 7번째 열: 담당자
+    ae_col = find_col(df, TASK_COLS["assignee_email"])
     f_col = find_col(df, TASK_COLS["frequency"])
 
-    missing = [k for k,v in [("title",t_col),("frequency",f_col)] if not v]
+    missing = [k for k,v in [("title",t_col),("assignee",a_col),("frequency",f_col)] if not v]
     if missing:
         print(f"[tasks] 필수 컬럼 누락: {missing}"); return 0
 
@@ -89,16 +92,18 @@ def import_tasks(df):
     with get_conn() as conn:
         for _, row in df.iterrows():
             title = str(row.get(t_col)).strip() if pd.notna(row.get(t_col)) else None
+            assignee = str(row.get(a_col)).strip() if pd.notna(row.get(a_col)) else None  # 7번째 열 값 가져오기
+            assignee_email = str(row.get(ae_col)).strip() if pd.notna(row.get(ae_col)) else None
             freq  = normalize_freq(row.get(f_col))
             if not title or freq not in ("daily","weekly","monthly"): continue
 
             due_date = calculate_due_date(freq).strftime("%Y-%m-%d")
 
             conn.execute(
-                """INSERT INTO tasks(title, frequency, status, due_date)
-                   VALUES (?,?, 'pending', ?)
-                   ON CONFLICT(title, frequency) DO UPDATE SET due_date=excluded.due_date""",
-                (title, freq, due_date)
+                """INSERT INTO tasks(title, assignee, assignee_email, frequency, status, due_date)
+                   VALUES (?,?,?,?, 'pending', ?)
+                   ON CONFLICT(title, frequency) DO UPDATE SET due_date=excluded.due_date, assignee=excluded.assignee, assignee_email=excluded.assignee_email""",
+                (title, assignee, assignee_email, freq, due_date)
             )
             cnt += 1
     print(f"[tasks] 업데이트 또는 삽입: {cnt}건")

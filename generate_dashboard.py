@@ -1,5 +1,6 @@
 import sqlite3
 from jinja2 import Template
+from datetime import datetime
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -25,23 +26,44 @@ HTML_TEMPLATE = """
         .container {
             padding: 2rem;
         }
+        .charts {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
         .chart-container {
-            width: 50%; /* 그래프 크기를 줄임 */
-            margin: 0 auto;
+            width: 35%;
         }
-        table {
-            width: 100%;
+        .chart-title {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+        .summary-table {
+            width: 60%;
+            margin: 1rem auto;
             border-collapse: collapse;
-            margin-top: 2rem;
         }
-        table, th, td {
+        .summary-table th, .summary-table td {
             border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
         }
-        th, td {
+        .summary-table th {
+            background-color: #007bff;
+            color: white;
+        }
+        .task-table {
+            width: 100%;
+            margin-top: 2rem;
+            border-collapse: collapse;
+        }
+        .task-table th, .task-table td {
+            border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
         }
-        th {
+        .task-table th {
             background-color: #007bff;
             color: white;
         }
@@ -53,25 +75,54 @@ HTML_TEMPLATE = """
     </header>
     <div class="container">
         <h2>업무 진행 상황</h2>
-        <div class="chart-container">
-            <canvas id="progressChart"></canvas>
+        <div class="charts">
+            <div class="chart-container">
+                <canvas id="dailyProgressChart"></canvas>
+                <div class="chart-title">하루 기준 진행 상황</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="overallProgressChart"></canvas>
+                <div class="chart-title">전체 진행 상황</div>
+            </div>
         </div>
 
-        <h2>할 일 목록</h2>
-        <table>
+        <h2>담당자별 진행 상황</h2>
+        <table class="summary-table">
             <thead>
                 <tr>
-                    <th>상태</th>
+                    <th>담당자</th>
+                    <th>진행 중</th>
+                    <th>완료</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assignee, counts in assignee_data.items() %}
+                <tr>
+                    <td>{{ assignee }}</td>
+                    <td>{{ counts['pending'] }}</td>
+                    <td>{{ counts['completed'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>업무 목록</h2>
+        <table class="task-table">
+            <thead>
+                <tr>
                     <th>업무</th>
+                    <th>상태</th>
                     <th>마감일</th>
+                    <th>담당자 이메일</th> <!-- 열 제목 유지 -->
                 </tr>
             </thead>
             <tbody>
                 {% for task in tasks %}
                 <tr>
-                    <td>{{ "완료" if task[1] == 'completed' else "진행 중" }}</td>
                     <td>{{ task[0] }}</td>
+                    <td>{{ "완료" if task[1] == 'completed' else "진행 중" }}</td>
                     <td>{{ task[2] }}</td>
+                    <td>{{ task[4] }}</td> <!-- 담당자 이메일 수정 -->
                 </tr>
                 {% endfor %}
             </tbody>
@@ -79,17 +130,25 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        const taskData = {
+        const dailyTaskData = {
             labels: ['완료', '진행 중'],
             datasets: [{
-                data: [{{ completed }}, {{ pending }}],
+                data: [{{ daily_completed }}, {{ daily_pending }}],
                 backgroundColor: ['#28a745', '#ffc107'],
             }]
         };
 
-        const config = {
+        const overallTaskData = {
+            labels: ['완료', '진행 중'],
+            datasets: [{
+                data: [{{ overall_completed }}, {{ overall_pending }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+            }]
+        };
+
+        const dailyConfig = {
             type: 'doughnut',
-            data: taskData,
+            data: dailyTaskData,
             options: {
                 responsive: true,
                 plugins: {
@@ -100,8 +159,24 @@ HTML_TEMPLATE = """
             },
         };
 
-        const ctx = document.getElementById('progressChart').getContext('2d');
-        new Chart(ctx, config);
+        const overallConfig = {
+            type: 'doughnut',
+            data: overallTaskData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                },
+            },
+        };
+
+        const dailyCtx = document.getElementById('dailyProgressChart').getContext('2d');
+        new Chart(dailyCtx, dailyConfig);
+
+        const overallCtx = document.getElementById('overallProgressChart').getContext('2d');
+        new Chart(overallCtx, overallConfig);
     </script>
 </body>
 </html>
@@ -110,21 +185,55 @@ HTML_TEMPLATE = """
 def fetch_tasks():
     conn = sqlite3.connect("reminder.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT title, status, due_date FROM tasks")
+    cursor.execute("SELECT title, status, due_date, assignee, assignee_email FROM tasks")  # assignee 추가
     tasks = cursor.fetchall()
     conn.close()
     return tasks
 
+def update_daily_tasks():
+    today = datetime.now().strftime('%Y-%m-%d')
+    conn = sqlite3.connect("reminder.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE tasks SET due_date = ? WHERE frequency = 'daily'", (today,))
+    conn.commit()
+    conn.close()
+
 def generate_dashboard():
+    update_daily_tasks()  # 매일 해야 하는 업무의 날짜를 업데이트
     tasks = fetch_tasks()
-    completed = sum(1 for task in tasks if task[1] == 'completed')
-    pending = sum(1 for task in tasks if task[1] == 'pending')
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    overall_completed = sum(1 for task in tasks if task[1] == 'completed')
+    overall_pending = sum(1 for task in tasks if task[1] == 'pending')
+
+    daily_completed = sum(1 for task in tasks if task[1] == 'completed' and task[2] == today)
+    daily_pending = sum(1 for task in tasks if task[1] == 'pending' and task[2] == today)
+
+    assignee_data = {}
+    for task in tasks:
+        assignee = task[3]  # assignee 컬럼 사용
+        if assignee not in assignee_data:
+            assignee_data[assignee] = {'completed': 0, 'pending': 0}
+        if task[1] == 'completed':
+            assignee_data[assignee]['completed'] += 1
+        elif task[1] == 'pending':
+            assignee_data[assignee]['pending'] += 1
 
     template = Template(HTML_TEMPLATE)
-    rendered_html = template.render(tasks=tasks, completed=completed, pending=pending)
+    rendered_html = template.render(
+        daily_completed=daily_completed,
+        daily_pending=daily_pending,
+        overall_completed=overall_completed,
+        overall_pending=overall_pending,
+        assignee_data=assignee_data,
+        tasks=tasks
+    )
 
     with open("dashboard.html", "w", encoding="utf-8") as f:
         f.write(rendered_html)
+
+    print(f"하루 기준 진행 중: {daily_pending}건, 완료: {daily_completed}건")
+    print(f"전체 진행 중: {overall_pending}건, 완료: {overall_completed}건")
 
 if __name__ == "__main__":
     generate_dashboard()

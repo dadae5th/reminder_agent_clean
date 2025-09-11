@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   status TEXT CHECK(status IN ('pending','done')) DEFAULT 'pending',
   hmac_token TEXT UNIQUE,
   last_completed_at TEXT,
-  updated_at TEXT
+  updated_at TEXT,
+  assignee TEXT
 );
 CREATE TABLE IF NOT EXISTS users (
   email TEXT PRIMARY KEY,
