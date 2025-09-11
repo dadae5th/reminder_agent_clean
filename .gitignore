@@ -1,0 +1,17 @@
+# 민감한 파일 제외
+.env
+config.yaml
+reminder.db
+
+# 일반적으로 제외되는 파일들
+*.log
+*.pyc
+__pycache__/
+*.sqlite3
+*.db
+.DS_Store
+node_modules/
+dist/
+build/
+.vscode/
+.idea/
