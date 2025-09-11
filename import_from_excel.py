@@ -2,6 +2,7 @@
 import argparse
 import pandas as pd
 from db import get_conn, init_schema
+from datetime import datetime
 
 USER_SHEET_CANDIDATES = ["Users", "users", "담당자", "수신자"]
 TASK_SHEET_CANDIDATES = ["Tasks", "tasks", "할일", "업무", "체크리스트"]
@@ -16,6 +17,7 @@ TASK_COLS = {
     "assignee_email": ["assignee_email", "담당자이메일", "이메일", "메일", "email"],
     "frequency": ["frequency", "주기", "cycle"],
     "due_date": ["due_date", "마감일", "기한", "due", "deadline"],
+    "start_date": ["start_date", "시작일", "시작일자", "시작일자"],
 }
 
 FREQ_MAP = {
@@ -48,6 +50,16 @@ def normalize_freq(x):
     if pd.isna(x): return None
     return FREQ_MAP.get(str(x).strip().lower())
 
+def calculate_due_date(frequency):
+    now = datetime.now()
+    if frequency == "daily":
+        return now + pd.Timedelta(days=1)
+    elif frequency == "weekly":
+        return now + pd.Timedelta(weeks=1)
+    elif frequency == "monthly":
+        return now + pd.DateOffset(months=1)
+    return None
+
 def import_users(df):
     e_col = find_col(df, USER_COLS["email"])
     n_col = find_col(df, USER_COLS["name"])
@@ -67,11 +79,9 @@ def import_users(df):
 
 def import_tasks(df):
     t_col = find_col(df, TASK_COLS["title"])
-    a_col = find_col(df, TASK_COLS["assignee_email"])
     f_col = find_col(df, TASK_COLS["frequency"])
-    d_col = find_col(df, TASK_COLS["due_date"])
 
-    missing = [k for k,v in [("title",t_col),("assignee_email",a_col),("frequency",f_col)] if not v]
+    missing = [k for k,v in [("title",t_col),("frequency",f_col)] if not v]
     if missing:
         print(f"[tasks] 필수 컬럼 누락: {missing}"); return 0
 
@@ -79,30 +89,19 @@ def import_tasks(df):
     with get_conn() as conn:
         for _, row in df.iterrows():
             title = str(row.get(t_col)).strip() if pd.notna(row.get(t_col)) else None
-            email = normalize_email(row.get(a_col))
             freq  = normalize_freq(row.get(f_col))
-            if not title or not email or freq not in ("daily","weekly","monthly"): continue
+            if not title or freq not in ("daily","weekly","monthly"): continue
 
-            due_str = None
-            if d_col and pd.notna(row.get(d_col)):
-                try:
-                    due_str = pd.to_datetime(row.get(d_col)).strftime("%Y-%m-%d")
-                except Exception:
-                    due_str = str(row.get(d_col))
-
-            exists = conn.execute(
-                "SELECT id FROM tasks WHERE title=? AND assignee_email=? AND frequency=?",
-                (title, email, freq)
-            ).fetchone()
-            if exists: continue
+            due_date = calculate_due_date(freq).strftime("%Y-%m-%d")
 
             conn.execute(
-                """INSERT INTO tasks(title, assignee_email, frequency, status, due_date)
-                   VALUES (?,?,?, 'pending', ?)""",
-                (title, email, freq, due_str)
+                """INSERT INTO tasks(title, frequency, status, due_date)
+                   VALUES (?,?, 'pending', ?)
+                   ON CONFLICT(title, frequency) DO UPDATE SET due_date=excluded.due_date""",
+                (title, freq, due_date)
             )
             cnt += 1
-    print(f"[tasks] 입력: {cnt}건(중복 제외)")
+    print(f"[tasks] 업데이트 또는 삽입: {cnt}건")
     return cnt
 
 def main():

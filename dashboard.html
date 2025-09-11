@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Dashboard</title>
+    <title>업무 대시보드</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -22,28 +23,321 @@
             padding: 2rem;
         }
         .chart-container {
-            width: 80%;
+            width: 50%; /* 그래프 크기를 줄임 */
             margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Task Dashboard</h1>
+        <h1>업무 대시보드</h1>
     </header>
     <div class="container">
-        <h2>Progress Overview</h2>
+        <h2>업무 진행 상황</h2>
         <div class="chart-container">
             <canvas id="progressChart"></canvas>
         </div>
+
+        <h2>할 일 목록</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>상태</th>
+                    <th>업무</th>
+                    <th>마감일</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>코드 디핑기 열처리 챔버 청소</td>
+                    <td>None</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>RTO Pre filter 청소</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>설비 가동 중 손 접금 금지(교육)</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>회의 준비</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>보고서 작성</td>
+                    <td>2025-09-15</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>장비 점검</td>
+                    <td>2025-09-30</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>팀 미팅</td>
+                    <td>2025-09-13</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>고객 피드백 분석</td>
+                    <td>2025-09-16</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>시스템 업데이트</td>
+                    <td>2025-09-25</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>연마 집진기 필터 교체</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>화재 경보 알람 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>#1 열처리존 가이드롤 정비</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>1차액통 청소</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>2차액통 청소</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>금형 달기구 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>바닥 실리콘 제거 및 이물질 청소</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>슬링벨트 상태</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>설비 비상정지 작동 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>그라인더 숯돌 및 사포상태</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>연마기 냉각수 온도</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>반제품 복스 삽입구 상태</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>지게차 통로 이동시 비상벨 작동 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>자동증관라인 에어리스 센서 작동 상태</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>지게차 휠 및 브레이크 상태</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>콘센트 점검 청소</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>DOAS 필터 점검 청소</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>소화기 점검</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>누전 점검</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>화재 유도등</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>연삭기 주변 인화물질 보관 여부 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>레일커버 및 전선피복 상태</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>컷팅기 모터 과부하 및 발열</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>지게차 충전기 전선피복상태 점검</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>벤츄레이터/환풍기 작동 점검</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>방독마스크 필터 유통기한 점검</td>
+                    <td>2025-09-18</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>설비 및 계절용품 전원 off 상태 점검</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>혼련2층 물류창고 통로부 출입센서 작동 상태</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>지게차 안전운행 관련 교육</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>위험예지훈련(설비정지후 조치…)</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>톨루엔 배관 상태(누유 여부)</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>시업전 RTO 운전상태 확인</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>안전보호구 착용(안전모,방독마스크)</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>배전반 컨트롤러 내부 냉각 팬</td>
+                    <td>2025-09-12</td>
+                </tr>
+                
+                <tr>
+                    <td>진행 중</td>
+                    <td>배전반 컨트롤러 내부 오염</td>
+                    <td>2025-10-11</td>
+                </tr>
+                
+            </tbody>
+        </table>
     </div>
 
     <script>
-        // Example data, replace with dynamic data from your backend
         const taskData = {
-            labels: ['Completed', 'Pending'],
+            labels: ['완료', '진행 중'],
             datasets: [{
-                data: [70, 30], // Replace with actual data
+                data: [0, 42],
                 backgroundColor: ['#28a745', '#ffc107'],
             }]
         };
