@@ -113,7 +113,8 @@ HTML_TEMPLATE = """
                     <th>업무</th>
                     <th>상태</th>
                     <th>마감일</th>
-                    <th>담당자 이메일</th> <!-- 열 제목 유지 -->
+                    <th>담당자</th>
+                    <th>담당자 이메일</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,7 +123,8 @@ HTML_TEMPLATE = """
                     <td>{{ task[0] }}</td>
                     <td>{{ "완료" if task[1] == 'completed' else "진행 중" }}</td>
                     <td>{{ task[2] }}</td>
-                    <td>{{ task[4] }}</td> <!-- 담당자 이메일 수정 -->
+                    <td>{{ task[3] }}</td>
+                    <td>{{ task[4] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -185,7 +187,9 @@ HTML_TEMPLATE = """
 def fetch_tasks():
     conn = sqlite3.connect("reminder.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT title, status, due_date, assignee, assignee_email FROM tasks")  # assignee 추가
+    cursor.execute("DELETE FROM tasks WHERE assignee_email = 'sample.user@example.com'")  # sample.user@example.com 관련 데이터 삭제
+    conn.commit()
+    cursor.execute("SELECT title, status, due_date, assignee, assignee_email FROM tasks")
     tasks = cursor.fetchall()
     conn.close()
     return tasks
@@ -209,14 +213,15 @@ def generate_dashboard():
     daily_completed = sum(1 for task in tasks if task[1] == 'completed' and task[2] == today)
     daily_pending = sum(1 for task in tasks if task[1] == 'pending' and task[2] == today)
 
+    # 업무 목록 데이터를 기반으로 담당자별 진행 현황 생성
     assignee_data = {}
     for task in tasks:
-        assignee = task[3]  # assignee 컬럼 사용
+        assignee = task[3] or "알 수 없음"  # assignee 컬럼 사용, 기본값 설정
         if assignee not in assignee_data:
-            assignee_data[assignee] = {'completed': 0, 'pending': 0}
+            assignee_data[assignee] = {"completed": 0, "pending": 0}
         if task[1] == 'completed':
             assignee_data[assignee]['completed'] += 1
-        elif task[1] == 'pending':
+        else:
             assignee_data[assignee]['pending'] += 1
 
     template = Template(HTML_TEMPLATE)

@@ -9,7 +9,7 @@ TASK_SHEET_CANDIDATES = ["Tasks", "tasks", "할일", "업무", "체크리스트"
 
 USER_COLS = {
     "email": ["email", "이메일", "메일", "주소", "email_address"],
-    "name":  ["name", "이름", "담당자", "성명"],
+    "name": ["name", "담당자", "이름", "성명"]
 }
 
 TASK_COLS = {
@@ -33,11 +33,15 @@ def find_sheet(xl: pd.ExcelFile, candidates):
             return name
     return xl.sheet_names[0]
 
-def find_col(df: pd.DataFrame, candidates):
+def find_col(df: pd.DataFrame, candidates, context="task"):
     low = {str(c).strip().lower(): c for c in df.columns}
     for cand in candidates:
         k = cand.lower()
-        if k in low: return low[k]
+        if k in low: 
+            # context에 따라 우선순위 설정
+            if context == "user" and k == "담당자":
+                continue  # user context에서는 "담당자"를 제외
+            return low[k]
     for c in df.columns:
         if not isinstance(c, str): continue
         if c.strip().lower() in [x.lower() for x in candidates]: return c
@@ -62,27 +66,27 @@ def calculate_due_date(frequency):
     return None
 
 def import_users(df):
-    e_col = find_col(df, USER_COLS["email"])
-    n_col = find_col(df, USER_COLS["name"])
-    if not e_col: 
-        print("[users] 이메일 컬럼 없음 -> 건너뜀."); return 0
+    e_col = find_col(df, USER_COLS["email"], context="user")
+    n_col = find_col(df, USER_COLS["name"], context="user")
+    if not e_col or not n_col: 
+        print("[users] 이메일 또는 이름 컬럼 없음 -> 건너뜀."); return 0
     cnt = 0
     with get_conn() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT)")
         for _, row in df.iterrows():
             email = normalize_email(row.get(e_col))
-            if not email: continue
-            name = str(row.get(n_col)).strip() if n_col else ""
-            conn.execute("INSERT OR IGNORE INTO users(email,name) VALUES(?,?)", (email, name))
+            name = row.get(n_col)
+            if not email or not name: continue
+            conn.execute("INSERT OR IGNORE INTO users(email, name) VALUES(?, ?)", (email, name))
             cnt += 1
     print(f"[users] 입력: {cnt}건(중복 제외)")
     return cnt
 
 def import_tasks(df):
-    t_col = df.columns[3]  # 4번째 열: 업무명
-    a_col = df.columns[6]  # 7번째 열: 담당자
-    ae_col = find_col(df, TASK_COLS["assignee_email"])
-    f_col = find_col(df, TASK_COLS["frequency"])
+    t_col = find_col(df, TASK_COLS["title"], context="task")
+    a_col = find_col(df, TASK_COLS["assignee"], context="task")
+    ae_col = find_col(df, TASK_COLS["assignee_email"], context="task")
+    f_col = find_col(df, TASK_COLS["frequency"], context="task")
 
     missing = [k for k,v in [("title",t_col),("assignee",a_col),("frequency",f_col)] if not v]
     if missing:
@@ -92,7 +96,7 @@ def import_tasks(df):
     with get_conn() as conn:
         for _, row in df.iterrows():
             title = str(row.get(t_col)).strip() if pd.notna(row.get(t_col)) else None
-            assignee = str(row.get(a_col)).strip() if pd.notna(row.get(a_col)) else None  # 7번째 열 값 가져오기
+            assignee = str(row.get(a_col)).strip() if pd.notna(row.get(a_col)) else None
             assignee_email = str(row.get(ae_col)).strip() if pd.notna(row.get(ae_col)) else None
             freq  = normalize_freq(row.get(f_col))
             if not title or freq not in ("daily","weekly","monthly"): continue
