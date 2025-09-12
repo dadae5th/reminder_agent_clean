@@ -1,5 +1,5 @@
-base_url: http://192.168.114.67:8510
-dashboard_url: http://192.168.114.67:8505
+base_url: http://localhost:8003
+dashboard_url: http://localhost:8003/dashboard
 smtp:
   host: smtp.gmail.com
   port: 465

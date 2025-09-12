@@ -1,0 +1,79 @@
+name: Daily Reminder Email
+
+on:
+  schedule:
+    # 매일 오전 9시 (KST) = 오전 0시 (UTC)
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create config from secrets
+      run: |
+        cat > config.yaml << EOF
+        base_url: ${{ secrets.BASE_URL }}
+        dashboard_url: ${{ secrets.DASHBOARD_URL }}
+        smtp:
+          host: smtp.gmail.com
+          port: 465
+          user: ${{ secrets.SMTP_USER }}
+          pass: ${{ secrets.SMTP_PASS }}
+          sender_name: 해야할일 알림
+          sender_email: ${{ secrets.SMTP_USER }}
+        secret: ${{ secrets.SECRET_KEY }}
+        EOF
+        
+    - name: Initialize database if needed
+      run: |
+        python -c "
+        import os
+        if not os.path.exists('reminder.db'):
+            from db import init_schema
+            init_schema()
+            print('Database initialized')
+        else:
+            print('Database already exists')
+        "
+        
+    - name: Send daily reminder emails
+      run: |
+        python -c "
+        from digest import run_daily_digest
+        import traceback
+        try:
+            run_daily_digest()
+            print('✅ 메일 발송 완료!')
+        except Exception as e:
+            print(f'❌ 메일 발송 실패: {e}')
+            traceback.print_exc()
+            exit(1)
+        "
+        
+    - name: Commit database changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add reminder.db
+        git diff --staged --quiet || git commit -m "Update database after daily email send $(date)"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: main

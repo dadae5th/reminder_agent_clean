@@ -61,6 +61,10 @@ def mark_done_by_token(token: str) -> bool:
         )
         return cur.rowcount == 1
 
+def get_task_by_token(token: str):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM tasks WHERE hmac_token=?", (token,)).fetchone()
+
 def all_recipients():
     with get_conn() as conn:
         return [r["email"] for r in conn.execute("SELECT email FROM users")]

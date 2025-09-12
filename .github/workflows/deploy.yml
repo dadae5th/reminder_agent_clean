@@ -1,0 +1,50 @@
+name: Deploy Web Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create config from secrets
+      run: |
+        cat > config.yaml << EOF
+        base_url: ${{ secrets.BASE_URL }}
+        dashboard_url: ${{ secrets.DASHBOARD_URL }}
+        smtp:
+          host: smtp.gmail.com
+          port: 465
+          user: ${{ secrets.SMTP_USER }}
+          pass: ${{ secrets.SMTP_PASS }}
+          sender_name: 해야할일 알림
+          sender_email: ${{ secrets.SMTP_USER }}
+        secret: ${{ secrets.SECRET_KEY }}
+        EOF
+        
+    - name: Test configuration
+      run: |
+        python -c "
+        import yaml
+        with open('config.yaml') as f:
+            config = yaml.safe_load(f)
+        print('✅ Config loaded successfully')
+        print(f'Base URL: {config.get(\"base_url\", \"Not set\")}')
+        print(f'SMTP User: {config.get(\"smtp\", {}).get(\"user\", \"Not set\")}')
+        "

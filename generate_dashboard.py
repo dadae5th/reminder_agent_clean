@@ -239,6 +239,8 @@ def generate_dashboard():
 
     print(f"하루 기준 진행 중: {daily_pending}건, 완료: {daily_completed}건")
     print(f"전체 진행 중: {overall_pending}건, 완료: {overall_completed}건")
+    
+    return rendered_html  # HTML 반환 추가!
 
 if __name__ == "__main__":
     generate_dashboard()
