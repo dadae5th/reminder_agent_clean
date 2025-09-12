@@ -1,17 +1,69 @@
 # 민감한 파일 제외
 .env
-config.yaml
-reminder.db
+# config.yaml  # GitHub Actions에서 사용하므로 제외하지 않음
+# reminder.db  # GitHub Actions에서 사용하므로 제외하지 않음
 
-# 일반적으로 제외되는 파일들
-*.log
-*.pyc
+# Python
 __pycache__/
-*.sqlite3
-*.db
-.DS_Store
-node_modules/
-dist/
+*.py[cod]
+*.pyc
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+.venv-1/
+env/
+ENV/
+
+# IDE & OS
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Log files
+*.log
+*.sqlite3
+
+# Test files and temporary files
+test_*.py
+test_*.html
+check_*.py
+add_test*.py
+reset_and*.py
+send_*.py
+simple_*.py
+get_test*.py
+manual_*.py
+update_*.py
+config_check.*
+run_all.py
+
+# Directories and files to exclude
+debug/
+scripts/
+nginx_reminder_example.conf
+install_server.sh
+read_excel_columns.py
+
+# Development files only
+README_SERVER.md
