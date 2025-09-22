@@ -1,8 +1,8 @@
-# digest.py
+# digest.py - Supabase 버전
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import yaml
-from db import all_recipients, active_tasks_for_today, get_conn
+from supabase_client import supabase_manager
 from mailer import make_token, build_task_url, send_email
 
 KST = ZoneInfo("Asia/Seoul")
@@ -16,11 +16,11 @@ def html_for_tasks(tasks, base_url, dashboard_url=None):
         return None
     rows = []
     for t in tasks:
-        token = t["hmac_token"]
+        token = t.get("hmac_token")
         if not token:
             token = make_token(t["id"])
-            with get_conn() as conn:
-                conn.execute("UPDATE tasks SET hmac_token=? WHERE id=?", (token, t["id"]))
+            # Supabase로 토큰 업데이트
+            supabase_manager.update_task_token(t["id"], token)
         url = build_task_url(base_url, token)
         if dashboard_url:
             sep = "&" if "?" in url else "?"
@@ -61,11 +61,14 @@ def html_for_tasks(tasks, base_url, dashboard_url=None):
     now_str = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
     return f"""
       <div style="font-family:Arial,Apple SD Gothic Neo,Malgun Gothic;max-width:680px;margin:auto;">
-        <h2 style="margin-bottom:8px;">오늘의 해야할 일</h2>
+        <h2 style="margin-bottom:8px;">오늘의 해야할 일 📋</h2>
         <div style="color:#666;margin-bottom:16px;">생성 시각: {now_str} (KST)</div>
         {table}
         <p style="color:#666;font-size:12px;margin-top:12px">
-          * 완료 버튼을 클릭하면 이번 사이클에서 제외되고 대시보드에 즉시 반영됩니다.
+          * 완료 버튼을 클릭하면 자동으로 Supabase에 저장되고 대시보드에 즉시 반영됩니다.
+        </p>
+        <p style="color:#666;font-size:12px;">
+          🔗 <a href="{dashboard_url}" style="color:#007bff;">실시간 대시보드 보기</a>
         </p>
       </div>
     """
@@ -77,21 +80,25 @@ def run_daily_digest():
         dashboard_url = cfg.get("dashboard_url")
         mail_cfg = cfg["smtp"]
 
-        recipients = all_recipients()
+        # Supabase에서 이메일 수신자 목록 가져오기
+        recipients = supabase_manager.get_all_recipients()
         sent_count = 0
         
+        print(f"[INFO] 📧 이메일 발송 시작 - 대상자: {len(recipients)}명")
+        
         for r in recipients:
-            tasks = active_tasks_for_today(r)
-            print(f"[DEBUG] {r}의 오늘 업무: {len(tasks)}개")  # 디버그 로그
+            # Supabase에서 오늘 할 업무 가져오기
+            tasks = supabase_manager.active_tasks_for_today(r)
+            print(f"[DEBUG] {r}의 오늘 업무: {len(tasks)}개")
             
             if tasks:
                 for task in tasks:
-                    print(f"[DEBUG] - {task['title']} [{task['frequency']}]")  # 업무 로그
+                    print(f"[DEBUG] - {task['title']} [{task['frequency']}]")
             
             html = html_for_tasks(tasks, base_url, dashboard_url)
             if html:
                 try:
-                    print(f"[DEBUG] Sending email to {r} using SMTP server {mail_cfg['host']}:{mail_cfg['port']}")  # SMTP 디버그 로그
+                    print(f"[DEBUG] Sending email to {r} using SMTP server {mail_cfg['host']}:{mail_cfg['port']}")
                     send_email(
                         smtp_host=mail_cfg["host"],
                         smtp_port=mail_cfg["port"],
@@ -100,18 +107,47 @@ def run_daily_digest():
                         sender_name=mail_cfg["sender_name"],
                         sender_email=mail_cfg["sender_email"],
                         to_email=r,
-                        subject="[일일 알림] 오늘의 해야할 일",
+                        subject="[일일 알림] 오늘의 해야할 일 📋",
                         html_body=html
                     )
                     sent_count += 1
-                    print(f"[DEBUG] {r}에게 이메일 발송 성공")  # 성공 로그
+                    print(f"[SUCCESS] ✅ {r}에게 이메일 발송 성공")
+                    
+                    # Supabase에 이메일 발송 기록 저장
+                    log_email_sent(r, len(tasks))
+                    
                 except Exception as e:
-                    print(f"[ERROR] {r}에게 이메일 발송 실패: {e}")  # 에러 로그
+                    print(f"[ERROR] ❌ {r}에게 이메일 발송 실패: {e}")
+                    log_email_sent(r, len(tasks), "failed", str(e))
             else:
-                print(f"[DEBUG] {r}: 오늘 할 업무가 없음")  # 업무 없음 로그
+                print(f"[DEBUG] {r}: 오늘 할 업무가 없음")
         
-        print(f"[DEBUG] 총 {sent_count}명에게 이메일 발송 완료")
+        print(f"[SUCCESS] 🎉 총 {sent_count}명에게 이메일 발송 완료")
         return sent_count > 0
+        
     except Exception as e:
-        print(f"[CRITICAL ERROR] Digest execution failed: {e}")
+        print(f"[CRITICAL ERROR] ❌ Digest execution failed: {e}")
         return False
+
+def log_email_sent(recipient_email, task_count, status="sent", error_message=None):
+    """이메일 발송 기록을 Supabase에 저장"""
+    try:
+        data = {
+            'recipient_email': recipient_email,
+            'subject': '[일일 알림] 오늘의 해야할 일 📋',
+            'task_count': task_count,
+            'status': status,
+            'error_message': error_message,
+            'sent_at': supabase_manager.kst_now().isoformat()
+        }
+        supabase_manager.supabase.table('email_logs').insert(data).execute()
+    except Exception as e:
+        print(f"[WARNING] 이메일 발송 기록 저장 실패: {e}")
+
+if __name__ == "__main__":
+    print("🚀 일일 알림 이메일 발송 시작...")
+    success = run_daily_digest()
+    if success:
+        print("✅ 이메일 발송 완료!")
+    else:
+        print("❌ 이메일 발송 실패!")

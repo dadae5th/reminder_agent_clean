@@ -4,4 +4,7 @@ APScheduler==3.10.4
 PyYAML==6.0.2
 jinja2>=3.0.0
 openpyxl>=3.0.0
+pandas>=2.0.0
 python-multipart>=0.0.6
+supabase>=1.0.0
+python-dotenv>=1.0.0
