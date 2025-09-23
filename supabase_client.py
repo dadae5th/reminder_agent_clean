@@ -1,30 +1,36 @@
 # supabase_client.py - Supabase 클라이언트 및 데이터베이스 로직
 import os
-import ssl
-import urllib3
 from supabase import create_client, Client
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 import logging
 
-# SSL 인증서 검증 우회 (회사 네트워크 환경)
-ssl._create_default_https_context = ssl._create_unverified_context
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# 시간대 설정 - 호환성 처리
+try:
+    from zoneinfo import ZoneInfo
+    KST = ZoneInfo("Asia/Seoul")
+except ImportError:
+    from datetime import timezone
+    KST = timezone(timedelta(hours=9))
+
+# SSL 우회는 로컬 환경에서만 (회사 네트워크)
+try:
+    import ssl
+    import urllib3
+    if os.getenv('GITHUB_ACTIONS') != 'true':  # GitHub Actions가 아닐 때만
+        ssl._create_default_https_context = ssl._create_unverified_context
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        os.environ['PYTHONHTTPSVERIFY'] = '0'
+except ImportError:
+    pass  # urllib3가 없어도 계속 진행
 
 # 환경 변수 로드
 load_dotenv()
 
-# 추가 SSL 우회 설정
-os.environ['PYTHONHTTPSVERIFY'] = '0'
-
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# 한국 시간대
-KST = ZoneInfo("Asia/Seoul")
 
 class SupabaseManager:
     def __init__(self, use_service_key=False):

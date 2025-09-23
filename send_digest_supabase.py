@@ -61,9 +61,82 @@ def _load_cfg():
     except FileNotFoundError:
         raise Exception("config.yaml 파일이 없고 환경변수도 설정되지 않았습니다.")
 
+def get_users_and_tasks_from_sqlite():
+    """SQLite에서만 사용자와 업무 정보 가져오기 (GitHub Actions용)"""
+    users_tasks = {}
+    
+    try:
+        with get_sqlite_conn() as conn:
+            # 사용자별 업무 조회
+            query = """
+                SELECT DISTINCT u.email, u.name,
+                       t.id, t.title, t.frequency, t.hmac_token,
+                       t.last_completed_at, t.due_date
+                FROM users u
+                JOIN tasks t ON u.email = t.assignee_email
+                WHERE t.status = 'pending'
+                ORDER BY u.email, t.id
+            """
+            
+            rows = conn.execute(query).fetchall()
+            
+            current_email = None
+            current_user_name = None
+            current_tasks = []
+            
+            for row in rows:
+                email = row['email']
+                
+                if email != current_email:
+                    # 이전 사용자 데이터 저장
+                    if current_email and current_tasks:
+                        today_tasks = filter_tasks_for_today(current_tasks)
+                        if today_tasks:
+                            users_tasks[current_email] = {
+                                'name': current_user_name,
+                                'tasks': today_tasks
+                            }
+                    
+                    # 새 사용자 시작
+                    current_email = email
+                    current_user_name = row['name']
+                    current_tasks = []
+                
+                # 업무 데이터 추가
+                task_data = {
+                    'id': row['id'],
+                    'title': row['title'],
+                    'frequency': row['frequency'],
+                    'hmac_token': row['hmac_token'],
+                    'last_completed_at': row['last_completed_at'],
+                    'due_date': row['due_date']
+                }
+                current_tasks.append(task_data)
+            
+            # 마지막 사용자 처리
+            if current_email and current_tasks:
+                today_tasks = filter_tasks_for_today(current_tasks)
+                if today_tasks:
+                    users_tasks[current_email] = {
+                        'name': current_user_name,
+                        'tasks': today_tasks
+                    }
+            
+            print(f"[SUCCESS] ✅ SQLite에서 {len(users_tasks)}명의 업무 데이터 조회 성공")
+            return users_tasks
+            
+    except Exception as e:
+        print(f"[ERROR] ❌ SQLite 조회 실패: {e}")
+        return {}
+
 def get_users_and_tasks():
     """Supabase 또는 SQLite에서 사용자와 업무 정보 가져오기"""
     users_tasks = {}
+    
+    # GitHub Actions 환경에서는 SQLite만 사용 (간단함)
+    if os.getenv('GITHUB_ACTIONS') == 'true':
+        print("[INFO] 🔗 GitHub Actions 환경: SQLite 모드 사용")
+        return get_users_and_tasks_from_sqlite()
     
     try:
         # Supabase 시도

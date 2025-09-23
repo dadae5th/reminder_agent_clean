@@ -39,6 +39,62 @@ jobs:
         echo "DASHBOARD_URL=${{ secrets.DASHBOARD_URL }}" >> .env
         echo "SECRET=${{ secrets.SECRET }}" >> .env
         
+    - name: Initialize database and sample data
+      run: |
+        python -c "
+        import sqlite3
+        import os
+        from datetime import datetime
+        
+        # 데이터베이스 초기화
+        conn = sqlite3.connect('reminder.db')
+        
+        # 스키마 생성
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            email TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            assignee_email TEXT,
+            frequency TEXT CHECK(frequency IN ('daily', 'weekly', 'monthly')),
+            status TEXT DEFAULT 'pending',
+            assignee TEXT,
+            hmac_token TEXT,
+            last_completed_at TEXT,
+            due_date TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assignee_email) REFERENCES users (email)
+        )''')
+        
+        # 샘플 데이터 추가
+        conn.execute('INSERT OR IGNORE INTO users (email, name) VALUES (?, ?)', 
+                    ('bae.jae.kwon@drbworld.com', '배재권'))
+        
+        # 샘플 업무 추가
+        tasks = [
+            ('일일 이메일 확인', 'bae.jae.kwon@drbworld.com', 'daily', '배재권'),
+            ('주간 회의 자료 준비', 'bae.jae.kwon@drbworld.com', 'weekly', '배재권'),
+            ('월간 성과 보고서 작성', 'bae.jae.kwon@drbworld.com', 'monthly', '배재권')
+        ]
+        
+        for title, email, freq, assignee in tasks:
+            conn.execute('''
+                INSERT OR IGNORE INTO tasks (title, assignee_email, frequency, assignee, status)
+                VALUES (?, ?, ?, ?, 'pending')
+            ''', (title, email, freq, assignee))
+        
+        conn.commit()
+        conn.close()
+        print('Database initialized with sample data')
+        "
+        
     - name: Debug - Check files
       run: |
         pwd
