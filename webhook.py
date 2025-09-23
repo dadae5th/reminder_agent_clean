@@ -83,6 +83,261 @@ def _pick_target(next_url, cfg_url):
         return cfg_url
     return next_url or cfg_url
 
+def generate_sqlite_dashboard():
+    """SQLite 데이터로 대시보드 HTML 생성"""
+    try:
+        with get_sqlite_conn() as conn:
+            # 기본 통계
+            total_tasks = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()["count"]
+            completed_tasks = conn.execute("SELECT COUNT(*) as count FROM tasks WHERE status = 'done'").fetchone()["count"]
+            pending_tasks = conn.execute("SELECT COUNT(*) as count FROM tasks WHERE status = 'pending'").fetchone()["count"]
+            
+            # 오늘 완료된 업무 (예시로 최근 24시간)
+            today_completed = conn.execute("""
+                SELECT COUNT(*) as count FROM tasks 
+                WHERE status = 'done' AND 
+                datetime(last_completed_at) > datetime('now', '-1 day')
+            """).fetchone()["count"]
+            
+            # 업무 목록 조회
+            all_tasks = conn.execute("""
+                SELECT id, title, assignee_email, frequency, status, created_at, last_completed_at
+                FROM tasks ORDER BY created_at DESC
+            """).fetchall()
+            
+            # 상태별 분류
+            pending_task_list = [dict(task) for task in all_tasks if task['status'] == 'pending']
+            completed_task_list = [dict(task) for task in all_tasks if task['status'] == 'done']
+            
+            # 주기별 분류 (pending만)
+            daily_tasks = [t for t in pending_task_list if t['frequency'] == 'daily']
+            weekly_tasks = [t for t in pending_task_list if t['frequency'] == 'weekly']
+            monthly_tasks = [t for t in pending_task_list if t['frequency'] == 'monthly']
+            
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S KST")
+            
+            return f"""
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 해야할일 관리 대시보드 (SQLite)</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f7fa; }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; }}
+        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .stat-card {{ background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }}
+        .stat-number {{ font-size: 2.5em; font-weight: bold; margin-bottom: 10px; }}
+        .stat-label {{ color: #666; font-size: 1.1em; }}
+        .section {{ background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }}
+        .section h2 {{ margin-top: 0; color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px; }}
+        .task-list {{ list-style: none; padding: 0; }}
+        .task-item {{ padding: 15px; border: 1px solid #e1e5e9; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }}
+        .task-item.daily {{ border-left: 5px solid #28a745; }}
+        .task-item.weekly {{ border-left: 5px solid #ffc107; }}
+        .task-item.monthly {{ border-left: 5px solid #dc3545; }}
+        .task-title {{ font-weight: 600; flex-grow: 1; }}
+        .task-meta {{ font-size: 0.9em; color: #666; margin-left: 10px; }}
+        .completion-log {{ background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #28a745; }}
+        .timestamp {{ color: #666; font-size: 0.9em; }}
+        .refresh-btn {{ background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }}
+        .api-links {{ margin-top: 20px; text-align: center; }}
+        .api-links a {{ color: #667eea; text-decoration: none; margin: 0 10px; }}
+    </style>
+    <script>
+        function refreshDashboard() {{ location.reload(); }}
+        setInterval(refreshDashboard, 30000); // 30초마다 자동 새로고침
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 해야할일 관리 대시보드</h1>
+            <p>🗃️ SQLite 로컬 데이터베이스 | 마지막 업데이트: {current_time}</p>
+            <button class="refresh-btn" onclick="refreshDashboard()">🔄 새로고침</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" style="color: #667eea;">{total_tasks}</div>
+                <div class="stat-label">전체 업무</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #28a745;">{completed_tasks}</div>
+                <div class="stat-label">완료된 업무</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #ffc107;">{pending_tasks}</div>
+                <div class="stat-label">진행 중 업무</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #dc3545;">{today_completed}</div>
+                <div class="stat-label">최근 24시간 완료</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📅 일일 업무 ({len(daily_tasks)}개)</h2>
+            <ul class="task-list">
+                {''.join([f'<li class="task-item daily"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in daily_tasks]) if daily_tasks else '<li style="text-align: center; color: #666;">완료된 일일 업무가 없습니다 ✅</li>'}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📆 주간 업무 ({len(weekly_tasks)}개)</h2>
+            <ul class="task-list">
+                {''.join([f'<li class="task-item weekly"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in weekly_tasks]) if weekly_tasks else '<li style="text-align: center; color: #666;">완료된 주간 업무가 없습니다 ✅</li>'}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📊 월간 업무 ({len(monthly_tasks)}개)</h2>
+            <ul class="task-list">
+                {''.join([f'<li class="task-item monthly"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in monthly_tasks]) if monthly_tasks else '<li style="text-align: center; color: #666;">완료된 월간 업무가 없습니다 ✅</li>'}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>🎉 최근 완료된 업무</h2>
+            {''.join([f'<div class="completion-log"><strong>{task["title"]}</strong><br><span class="timestamp">완료 시간: {task["last_completed_at"] or "N/A"} | 담당자: {task["assignee_email"]}</span></div>' for task in completed_task_list[:5]]) if completed_task_list else '<p style="text-align: center; color: #666;">아직 완료된 업무가 없습니다.</p>'}
+        </div>
+
+        <div class="api-links">
+            <h3>🔗 API 링크</h3>
+            <a href="/api/stats">📊 통계 API</a>
+            <a href="/api/tasks">📋 업무 API</a>
+            <a href="/send-test-email">📧 테스트 이메일</a>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    except Exception as e:
+        logger.error(f"SQLite 대시보드 생성 오류: {e}")
+        return f"""
+<html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+    <h1>❌ 대시보드 오류</h1>
+    <p>SQLite 데이터베이스 조회 중 오류가 발생했습니다:</p>
+    <p style="color: red;">{str(e)}</p>
+    <p><a href="/health" style="color: #007bff;">서버 상태 확인</a></p>
+</body></html>
+"""
+
+def generate_sqlite_dashboard(stats, all_tasks):
+    """SQLite 데이터로 대시보드 HTML 생성"""
+    
+    # 업무를 상태별로 분류
+    pending_tasks = [t for t in all_tasks if t['status'] == 'pending']
+    completed_tasks = [t for t in all_tasks if t['status'] == 'done']
+    
+    # 주기별 분류 (진행중 업무만)
+    daily_tasks = [t for t in pending_tasks if t['frequency'] == 'daily']
+    weekly_tasks = [t for t in pending_tasks if t['frequency'] == 'weekly']
+    monthly_tasks = [t for t in pending_tasks if t['frequency'] == 'monthly']
+    
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S KST")
+    
+    return f"""
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>📋 해야할일 관리 대시보드 (SQLite)</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f7fa; }}
+            .container {{ max-width: 1200px; margin: 0 auto; }}
+            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; }}
+            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+            .stat-card {{ background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }}
+            .stat-number {{ font-size: 2.5em; font-weight: bold; margin-bottom: 10px; }}
+            .stat-label {{ color: #666; font-size: 1.1em; }}
+            .section {{ background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }}
+            .section h2 {{ margin-top: 0; color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px; }}
+            .task-list {{ list-style: none; padding: 0; }}
+            .task-item {{ padding: 15px; border: 1px solid #e1e5e9; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }}
+            .task-item.daily {{ border-left: 5px solid #28a745; }}
+            .task-item.weekly {{ border-left: 5px solid #ffc107; }}
+            .task-item.monthly {{ border-left: 5px solid #dc3545; }}
+            .task-title {{ font-weight: 600; flex-grow: 1; }}
+            .task-meta {{ font-size: 0.9em; color: #666; margin-left: 10px; }}
+            .completion-log {{ background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #28a745; }}
+            .timestamp {{ color: #666; font-size: 0.9em; }}
+            .refresh-btn {{ background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }}
+            .api-links {{ margin-top: 20px; text-align: center; }}
+            .api-links a {{ color: #667eea; text-decoration: none; margin: 0 10px; }}
+        </style>
+        <script>
+            function refreshDashboard() {{ location.reload(); }}
+            setInterval(refreshDashboard, 30000); // 30초마다 자동 새로고침
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📋 해야할일 관리 대시보드</h1>
+                <p>🗄️ SQLite 로컬 데이터베이스 | 마지막 업데이트: {current_time}</p>
+                <button class="refresh-btn" onclick="refreshDashboard()">🔄 새로고침</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #667eea;">{stats['total_tasks']}</div>
+                    <div class="stat-label">전체 업무</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #28a745;">{stats['completed_tasks']}</div>
+                    <div class="stat-label">완료된 업무</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #ffc107;">{stats['pending_tasks']}</div>
+                    <div class="stat-label">진행 중 업무</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #dc3545;">{stats['today_completed']}</div>
+                    <div class="stat-label">오늘 완료</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📅 일일 업무 ({len(daily_tasks)}개)</h2>
+                <ul class="task-list">
+                    {''.join([f'<li class="task-item daily"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in daily_tasks]) if daily_tasks else '<li style="text-align: center; color: #666;">완료된 일일 업무가 없습니다 ✅</li>'}
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>📆 주간 업무 ({len(weekly_tasks)}개)</h2>
+                <ul class="task-list">
+                    {''.join([f'<li class="task-item weekly"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in weekly_tasks]) if weekly_tasks else '<li style="text-align: center; color: #666;">완료된 주간 업무가 없습니다 ✅</li>'}
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>📊 월간 업무 ({len(monthly_tasks)}개)</h2>
+                <ul class="task-list">
+                    {''.join([f'<li class="task-item monthly"><span class="task-title">{task["title"]}</span><span class="task-meta">{task["assignee_email"]}</span></li>' for task in monthly_tasks]) if monthly_tasks else '<li style="text-align: center; color: #666;">완료된 월간 업무가 없습니다 ✅</li>'}
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>🎉 최근 완료된 업무</h2>
+                {''.join([f'<div class="completion-log"><strong>{task["title"]}</strong><br><span class="timestamp">완료 시간: {task["last_completed_at"] or "미완료"} | 담당자: {task["assignee_email"]}</span></div>' for task in completed_tasks[:5]]) if completed_tasks else '<p style="text-align: center; color: #666;">아직 완료된 업무가 없습니다.</p>'}
+            </div>
+
+            <div class="api-links">
+                <h3>🔗 API 링크</h3>
+                <a href="/api/stats">📊 통계 API</a>
+                <a href="/api/tasks">📋 업무 API</a>
+                <a href="/send-test-email">📧 테스트 이메일</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
 def generate_supabase_dashboard(stats, all_tasks, recent_completions):
     """Supabase 데이터로 대시보드 HTML 생성"""
     
@@ -319,17 +574,12 @@ async def complete_multiple_tasks(request: Request):
 
 @app.get("/dashboard")
 async def serve_dashboard():
-    """실시간 Supabase 대시보드"""
+    """SQLite 기반 대시보드"""
     try:
-        # Supabase에서 실시간 데이터 조회
-        stats = supabase_manager.get_task_statistics()
-        all_tasks = supabase_manager.get_all_tasks()
-        recent_completions = supabase_manager.get_completion_logs(limit=10)
+        # SQLite 대시보드 생성 (파라미터 없이)
+        dashboard_html = generate_sqlite_dashboard()
         
-        # HTML 대시보드 생성
-        dashboard_html = generate_supabase_dashboard(stats, all_tasks, recent_completions)
-        
-        logger.info(f"📊 대시보드 생성 완료 - 업무 {stats['total_tasks']}개")
+        logger.info("📊 SQLite 대시보드 생성 완료")
         
         return HTMLResponse(content=dashboard_html, media_type="text/html; charset=utf-8")
         
@@ -340,7 +590,7 @@ async def serve_dashboard():
         return HTMLResponse(content=f"""
             <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
                 <h1>❌ 대시보드 오류</h1>
-                <p>Supabase 연결 또는 데이터 조회 중 오류가 발생했습니다:</p>
+                <p>데이터베이스 조회 중 오류가 발생했습니다:</p>
                 <p style="color: red;">{str(e)}</p>
                 <p><a href="/health" style="color: #007bff;">서버 상태 확인</a></p>
             </body></html>
@@ -381,9 +631,26 @@ async def send_test_email():
 
 @app.get("/api/stats")
 def get_statistics():
-    """업무 통계 API"""
+    """업무 통계 API - SQLite 우선"""
     try:
-        stats = supabase_manager.get_task_statistics()
+        with get_sqlite_conn() as conn:
+            total_tasks = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()["count"]
+            completed_tasks = conn.execute("SELECT COUNT(*) as count FROM tasks WHERE status = 'done'").fetchone()["count"]
+            pending_tasks = total_tasks - completed_tasks
+            
+            today = datetime.now().strftime('%Y-%m-%d')
+            today_completed = conn.execute(
+                "SELECT COUNT(*) as count FROM tasks WHERE DATE(last_completed_at) = ?", 
+                (today,)
+            ).fetchone()["count"]
+            
+            stats = {
+                'total_tasks': total_tasks,
+                'completed_tasks': completed_tasks,
+                'pending_tasks': pending_tasks,
+                'today_completed': today_completed
+            }
+            
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"API 통계 조회 오류: {e}")
@@ -391,10 +658,18 @@ def get_statistics():
 
 @app.get("/api/tasks")
 def get_all_tasks():
-    """모든 업무 조회 API"""
+    """모든 업무 조회 API - SQLite 우선"""
     try:
-        tasks = supabase_manager.get_all_tasks()
-        return {"success": True, "data": tasks, "count": len(tasks)}
+        with get_sqlite_conn() as conn:
+            tasks = conn.execute("""
+                SELECT id, title, assignee_email, frequency, status, created_at, last_completed_at, hmac_token
+                FROM tasks ORDER BY created_at DESC
+            """).fetchall()
+            
+            # Row 객체를 dict로 변환
+            tasks_list = [dict(task) for task in tasks]
+            
+        return {"success": True, "data": tasks_list, "count": len(tasks_list)}
     except Exception as e:
         logger.error(f"API 업무 조회 오류: {e}")
         return {"success": False, "error": str(e)}
