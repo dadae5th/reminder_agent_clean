@@ -50,13 +50,16 @@ test_*.html
 check_*.py
 add_test*.py
 reset_and*.py
-send_*.py
 simple_*.py
 get_test*.py
 manual_*.py
 update_*.py
 config_check.*
 run_all.py
+
+# Production files - exceptions (중요한 파일들은 포함)
+!send_digest_supabase.py
+!send_digest.bat
 
 # Directories and files to exclude
 debug/
