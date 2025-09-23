@@ -39,6 +39,18 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="해야할일 관리 시스템", version="2.0.0")
 
+# favicon.ico 404 오류 방지
+@app.get("/favicon.ico")
+def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+# 헬스체크 엔드포인트
+@app.get("/")
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "웹훅 서버가 정상 실행 중입니다", "timestamp": datetime.now().isoformat()}
+
 def _cfg():
     try:
         with open("config.yaml", "r", encoding="utf-8") as f:
