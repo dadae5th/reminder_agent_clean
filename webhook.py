@@ -49,14 +49,23 @@ def favicon():
 @app.get("/")
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "웹훅 서버가 정상 실행 중입니다", "timestamp": datetime.now().isoformat()}
-
-def _cfg():
+    """서버 상태 확인 - SQLite 우선"""
     try:
-        with open("config.yaml", "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
+        # SQLite 기본 상태 확인
+        with get_sqlite_conn() as conn:
+            task_count = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()
+            sqlite_tasks = task_count["count"] if task_count else 0
+        
+        return {
+            "status": "ok", 
+            "database": "sqlite_connected",
+            "total_tasks": sqlite_tasks,
+            "message": "웹훅 서버가 정상 실행 중입니다",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {"status": "error", "message": str(e), "timestamp": datetime.now().isoformat()}
 
 def _cfg():
     try:
@@ -187,32 +196,11 @@ def generate_supabase_dashboard(stats, all_tasks, recent_completions):
     </body>
     </html>
     """
-    try:
-        host = urlparse(next_url).hostname if next_url else None
-    except Exception:
-        host = None
-    if host in (None, "0.0.0.0"):
-        return cfg_url
-    return next_url or cfg_url
 
 @app.get("/health")
 def health():
-    """서버 상태 확인"""
-    try:
-        # SQLite 기본 상태 확인
-        with get_sqlite_conn() as conn:
-            task_count = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()
-            sqlite_tasks = task_count["count"] if task_count else 0
-        
-        return {
-            "status": "ok", 
-            "database": "sqlite_connected",
-            "total_tasks": sqlite_tasks,
-            "message": "웹훅 서버가 정상 실행 중입니다"
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {"status": "error", "message": str(e)}
+    """서버 상태 확인 - 별도 엔드포인트"""
+    return health_check()
 
 @app.get("/complete")
 def complete_task(token: str, next: Optional[str] = None, request: Request = None):
@@ -437,11 +425,13 @@ def create_task(title: str = Form(...), assignee_email: str = Form(...),
 
 if __name__ == "__main__":
     import uvicorn
-    import os
     
-    # Railway에서는 PORT 환경변수 사용, 로컬에서는 8003 사용
-    port = int(os.environ.get("PORT", 8003))
+    # GitHub Codespaces, Railway, Render 등에서 PORT 환경변수 사용
+    port = int(os.environ.get("PORT", 8080))  # 기본 포트를 8080으로 변경
     host = "0.0.0.0"
     
-    logger.info(f"🚀 웹훅 서버 시작 (포트 {port})")
+    logger.info(f"🚀 웹훅 서버 시작 - 호스트: {host}, 포트: {port}")
+    logger.info(f"📊 대시보드: http://{host}:{port}/dashboard")
+    logger.info(f"🔍 헬스체크: http://{host}:{port}/health")
+    
     uvicorn.run(app, host=host, port=port)
