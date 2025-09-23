@@ -2,7 +2,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from zoneinfo import ZoneInfo
 from datetime import datetime
-from digest import run_daily_digest
+from send_digest_supabase import run_daily_digest  # Supabase 버전 사용
 
 KST = ZoneInfo("Asia/Seoul")
 

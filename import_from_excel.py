@@ -1,6 +1,8 @@
 # import_from_excel.py - 엑셀 파일에서 데이터 가져오기
 import pandas as pd
 import sqlite3
+import os
+import glob
 from contextlib import contextmanager
 from mailer import make_token
 
@@ -13,6 +15,43 @@ def get_conn():
         conn.commit()
     finally:
         conn.close()
+
+def find_excel_files():
+    """현재 폴더에서 엑셀 파일 찾기"""
+    excel_files = []
+    
+    # .xlsx와 .xls 파일 찾기
+    for pattern in ['*.xlsx', '*.xls']:
+        excel_files.extend(glob.glob(pattern))
+    
+    return excel_files
+
+def select_excel_file():
+    """엑셀 파일 선택"""
+    excel_files = find_excel_files()
+    
+    if not excel_files:
+        print("❌ 현재 폴더에 엑셀 파일이 없습니다.")
+        return None
+    
+    print("📂 발견된 엑셀 파일:")
+    for i, file in enumerate(excel_files, 1):
+        print(f"   {i}. {file}")
+    
+    if len(excel_files) == 1:
+        print(f"\n✅ 자동 선택: {excel_files[0]}")
+        return excel_files[0]
+    
+    try:
+        choice = int(input(f"\n파일을 선택하세요 (1-{len(excel_files)}): ")) - 1
+        if 0 <= choice < len(excel_files):
+            return excel_files[choice]
+        else:
+            print("❌ 잘못된 선택입니다.")
+            return None
+    except ValueError:
+        print("❌ 숫자를 입력해주세요.")
+        return None
 
 def analyze_excel_structure(file_path):
     """엑셀 파일 구조 분석"""
@@ -53,20 +92,15 @@ def import_tasks_from_excel(file_path, title_col="제목", assignee_col="담당�
         print(f"사용 가능한 컬럼: {list(df.columns)}")
         return False
     
-    # 기존 데이터 백업
+    # 기존 데이터 확인
     with get_conn() as conn:
         backup_count = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
         print(f"\n💾 기존 업무 수: {backup_count}개")
         
         if backup_count > 0:
-            response = input("기존 데이터를 삭제하고 새로 가져올까요? (y/N): ")
-            if response.lower() != 'y':
-                print("작업이 취소되었습니다.")
-                return False
-            
-            # 기존 데이터 삭제
-            conn.execute("DELETE FROM tasks")
-            print("✅ 기존 데이터 삭제 완료")
+            print("⚠️ 기존 데이터가 있습니다. 기존 데이터를 유지하고 새 데이터를 추가합니다.")
+        else:
+            print("✅ 새로운 데이터를 추가합니다.")
     
     # 사용자 정보 수집
     unique_assignees = df[assignee_col].dropna().unique()
@@ -123,9 +157,17 @@ def import_tasks_from_excel(file_path, title_col="제목", assignee_col="담당�
                 user = conn.execute("SELECT email FROM users WHERE name = ?", (assignee,)).fetchone()
                 assignee_email = user[0] if user else f"{assignee.lower().replace(' ', '.')}@company.com"
             
-            # 업무 추가
+            # 업무 추가 (중복 체크)
+            existing = conn.execute("""
+                SELECT id FROM tasks WHERE title = ? AND assignee_email = ?
+            """, (title, assignee_email)).fetchone()
+            
+            if existing:
+                print(f"   ⚠️ 중복 업무 스킵: {title}")
+                continue
+            
             conn.execute("""
-                INSERT INTO tasks (title, assignee_email, frequency, status, creator_name)
+                INSERT INTO tasks (title, assignee_email, frequency, status, assignee)
                 VALUES (?, ?, ?, 'pending', ?)
             """, (title, assignee_email, frequency, assignee))
             
@@ -145,9 +187,23 @@ def import_tasks_from_excel(file_path, title_col="제목", assignee_col="담당�
     return True
 
 if __name__ == "__main__":
-    # 사용 예시
-    file_path = input("엑셀 파일 경로를 입력하세요: ")
-    if file_path.strip():
-        import_tasks_from_excel(file_path.strip())
+    print("🚀 엑셀 업무 데이터 가져오기")
+    print("=" * 30)
+    
+    # 자동으로 엑셀 파일 찾기
+    file_path = select_excel_file()
+    
+    if file_path:
+        print(f"\n📂 선택된 파일: {file_path}")
+        success = import_tasks_from_excel(file_path)
+        
+        if success:
+            print("\n🎉 업무 데이터 가져오기가 완료되었습니다!")
+            print("   - 웹 대시보드에서 확인하세요: http://localhost:8003/dashboard")
+        else:
+            print("\n❌ 데이터 가져오기에 실패했습니다.")
     else:
-        print("엑셀 파일 경로가 입력되지 않았습니다.")
+        print("\n💡 직접 파일 경로를 입력하시겠습니까?")
+        manual_path = input("엑셀 파일 경로 (Enter로 취소): ").strip()
+        if manual_path:
+            import_tasks_from_excel(manual_path)
