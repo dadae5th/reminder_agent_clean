@@ -19,9 +19,30 @@ try:
     import ssl
     import urllib3
     if os.getenv('GITHUB_ACTIONS') != 'true':  # GitHub Actions가 아닐 때만
+        # 더 강력한 SSL 우회 설정
         ssl._create_default_https_context = ssl._create_unverified_context
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         os.environ['PYTHONHTTPSVERIFY'] = '0'
+        os.environ['CURL_CA_BUNDLE'] = ''
+        os.environ['REQUESTS_CA_BUNDLE'] = ''
+        
+        # requests 라이브러리도 SSL 검증 우회
+        import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        class InsecureHTTPAdapter(HTTPAdapter):
+            def init_poolmanager(self, *args, **kwargs):
+                kwargs['ssl_context'] = ssl.create_default_context()
+                kwargs['ssl_context'].check_hostname = False
+                kwargs['ssl_context'].verify_mode = ssl.CERT_NONE
+                return super().init_poolmanager(*args, **kwargs)
+        
+        # 기본 세션에 insecure adapter 적용
+        session = requests.Session()
+        session.mount('https://', InsecureHTTPAdapter())
+        requests.sessions.Session = lambda: session
+        
 except ImportError:
     pass  # urllib3가 없어도 계속 진행
 

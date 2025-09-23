@@ -1,0 +1,61 @@
+name: Deploy Webhook Server to Railway
+
+on:
+  push:
+    branches: [ main, automation-system ]
+    paths:
+      - 'webhook.py'
+      - 'requirements.txt'
+      - 'railway.json'
+      - 'Dockerfile'
+      - '.github/workflows/deploy-webhook.yml'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Install Railway CLI
+      run: |
+        curl -fsSL https://railway.app/install.sh | sh
+        
+    - name: Deploy to Railway
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        # Railway 로그인
+        railway login --token $RAILWAY_TOKEN
+        
+        # 프로젝트에 연결 (기존 프로젝트가 있으면 연결, 없으면 새로 생성)
+        railway link --project reminder-webhook || railway new reminder-webhook
+        
+        # 환경변수 설정
+        railway variables set SUPABASE_URL="${{ secrets.SUPABASE_URL }}"
+        railway variables set SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}"
+        railway variables set SUPABASE_SERVICE_KEY="${{ secrets.SUPABASE_SERVICE_KEY }}"
+        railway variables set SMTP_HOST="${{ secrets.SMTP_HOST }}"
+        railway variables set SMTP_PORT="${{ secrets.SMTP_PORT }}"
+        railway variables set SMTP_USER="${{ secrets.SMTP_USER }}"
+        railway variables set SMTP_PASS="${{ secrets.SMTP_PASS }}"
+        railway variables set SMTP_SENDER_NAME="${{ secrets.SMTP_SENDER_NAME }}"
+        railway variables set SMTP_SENDER_EMAIL="${{ secrets.SMTP_SENDER_EMAIL }}"
+        railway variables set BASE_URL="${{ secrets.BASE_URL }}"
+        railway variables set DASHBOARD_URL="${{ secrets.DASHBOARD_URL }}"
+        railway variables set SECRET="${{ secrets.SECRET }}"
+        railway variables set ENVIRONMENT="production"
+        
+        # 배포
+        railway deploy
+        
+    - name: Get deployment URL
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        railway login --token $RAILWAY_TOKEN
+        railway status
+        echo "🚀 Webhook server deployed successfully!"
+        echo "Check your Railway dashboard for the deployment URL"

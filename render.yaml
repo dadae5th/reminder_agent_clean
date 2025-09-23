@@ -1,0 +1,17 @@
+# Render.com 배포 설정
+services:
+  - type: web
+    name: reminder-webhook
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn webhook:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SECRET
+        sync: false
+    autoDeploy: true

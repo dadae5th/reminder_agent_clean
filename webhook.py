@@ -2,12 +2,36 @@
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from typing import List, Optional
-from supabase_client import supabase_manager
 import yaml
 from urllib.parse import urlparse
 from datetime import datetime
 import os
 import logging
+import sqlite3
+from contextlib import contextmanager
+
+# 로컬 SQLite 우선 사용을 위한 설정
+USE_SQLITE_FIRST = True
+
+@contextmanager
+def get_sqlite_conn():
+    """SQLite 연결 관리"""
+    conn = sqlite3.connect("reminder.db", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+# Supabase는 선택적으로만 사용
+try:
+    from supabase_client import SupabaseManager
+    supabase_manager = SupabaseManager()
+    print("Supabase 연결 성공")
+except Exception as e:
+    print(f"Supabase 연결 실패, SQLite 모드로 실행: {e}")
+    supabase_manager = None
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -176,50 +200,36 @@ def health():
 
 @app.get("/complete")
 def complete_task(token: str, next: Optional[str] = None, request: Request = None):
-    """이메일에서 업무 완료 처리"""
+    """이메일에서 업무 완료 처리 - SQLite 우선"""
     try:
-        # 클라이언트 정보 수집
-        client_ip = getattr(request, 'client', {}).get('host', 'unknown') if request else 'unknown'
-        user_agent = request.headers.get('user-agent', 'unknown') if request else 'unknown'
-        
-        # Supabase로 업무 완료 처리
-        ok = supabase_manager.mark_task_completed_by_token(token)
-        
-        if ok:
-            # 완료 기록에 추가 정보 저장
-            task = supabase_manager.get_task_by_token(token)
-            if task:
-                # completion_logs 테이블에 상세 정보 저장
-                completion_data = {
-                    'task_id': task['id'],
-                    'completed_at': supabase_manager.kst_now().isoformat(),
-                    'completion_method': 'email',
-                    'user_agent': user_agent,
-                    'ip_address': client_ip,
-                    'notes': f"이메일 링크를 통한 완료 (토큰: {token[:10]}...)"
-                }
-                supabase_manager.supabase.table('completion_logs').insert(completion_data).execute()
-                logger.info(f"✅ 업무 완료: {task['title']} (ID: {task['id']})")
+        # SQLite로 업무 완료 처리
+        with get_sqlite_conn() as conn:
+            # 토큰으로 업무 찾기
+            task = conn.execute(
+                "SELECT * FROM tasks WHERE hmac_token = ? AND status = 'pending'", 
+                (token,)
+            ).fetchone()
             
-            target = _pick_target(next, _cfg().get("dashboard_url"))
-            if target:
-                return RedirectResponse(url=target, status_code=303)
-            return HTMLResponse("""
-                <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h2>✅ 완료되었습니다!</h2>
-                    <p>업무가 성공적으로 완료되어 Supabase에 저장되었습니다.</p>
-                    <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
-                </body></html>
-            """)
-        else:
-            logger.warning(f"⚠️ 업무 완료 실패: 토큰 {token}")
-            return HTMLResponse("""
-                <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h2>⚠️ 처리할 수 없습니다</h2>
-                    <p>이미 완료되었거나 토큰이 유효하지 않습니다.</p>
-                    <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
-                </body></html>
-            """, status_code=400)
+            if task:
+                # 업무 완료 처리
+                now = datetime.now().isoformat()
+                conn.execute(
+                    "UPDATE tasks SET status = 'done', last_completed_at = ? WHERE id = ?",
+                    (now, task['id'])
+                )
+                logger.info(f"✅ 업무 완료: {task['title']} (ID: {task['id']})")
+                
+                # 대시보드로 리다이렉트
+                return RedirectResponse(url="/dashboard", status_code=303)
+            else:
+                logger.warning(f"⚠️ 업무 완료 실패: 토큰 {token}")
+                return HTMLResponse("""
+                    <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                        <h2>⚠️ 처리할 수 없습니다</h2>
+                        <p>이미 완료되었거나 토큰이 유효하지 않습니다.</p>
+                        <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
+                    </body></html>
+                """, status_code=400)
             
     except Exception as e:
         logger.error(f"❌ 업무 완료 처리 오류: {e}")
@@ -408,3 +418,14 @@ def create_task(title: str = Form(...), assignee_email: str = Form(...),
     except Exception as e:
         logger.error(f"API 업무 생성 오류: {e}")
         return {"success": False, "error": str(e)}
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    
+    # Railway에서는 PORT 환경변수 사용, 로컬에서는 8003 사용
+    port = int(os.environ.get("PORT", 8003))
+    host = "0.0.0.0"
+    
+    logger.info(f"🚀 웹훅 서버 시작 (포트 {port})")
+    uvicorn.run(app, host=host, port=port)
