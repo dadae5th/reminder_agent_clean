@@ -199,12 +199,16 @@ def generate_supabase_dashboard(stats, all_tasks, recent_completions):
 def health():
     """서버 상태 확인"""
     try:
-        # Supabase 연결 테스트
-        stats = supabase_manager.get_task_statistics()
+        # SQLite 기본 상태 확인
+        with get_sqlite_conn() as conn:
+            task_count = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()
+            sqlite_tasks = task_count["count"] if task_count else 0
+        
         return {
             "status": "ok", 
-            "database": "connected",
-            "tasks": stats
+            "database": "sqlite_connected",
+            "total_tasks": sqlite_tasks,
+            "message": "웹훅 서버가 정상 실행 중입니다"
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
