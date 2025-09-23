@@ -101,8 +101,8 @@ def generate_sqlite_dashboard():
             
             # 업무 목록 조회
             all_tasks = conn.execute("""
-                SELECT id, title, assignee_email, frequency, status, created_at, last_completed_at
-                FROM tasks ORDER BY created_at DESC
+                SELECT id, title, assignee_email, frequency, status, last_completed_at
+                FROM tasks ORDER BY id DESC
             """).fetchall()
             
             # 상태별 분류
