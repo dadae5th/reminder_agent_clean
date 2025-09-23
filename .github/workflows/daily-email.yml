@@ -39,6 +39,12 @@ jobs:
         echo "DASHBOARD_URL=${{ secrets.DASHBOARD_URL }}" >> .env
         echo "SECRET=${{ secrets.SECRET }}" >> .env
         
+    - name: Debug - Check files
+      run: |
+        pwd
+        ls -la
+        ls -la send_digest_supabase.py || echo "send_digest_supabase.py not found"
+        
     - name: Send daily emails
       run: |
         python send_digest_supabase.py
