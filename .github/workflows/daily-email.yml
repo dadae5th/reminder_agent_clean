@@ -24,20 +24,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Create environment file
+    - name: Create config file
       run: |
-        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
-        echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
-        echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
-        echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-        echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-        echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-        echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-        echo "SMTP_SENDER_NAME=${{ secrets.SMTP_SENDER_NAME }}" >> .env
-        echo "SMTP_SENDER_EMAIL=${{ secrets.SMTP_SENDER_EMAIL }}" >> .env
-        echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
-        echo "DASHBOARD_URL=${{ secrets.DASHBOARD_URL }}" >> .env
-        echo "SECRET=${{ secrets.SECRET }}" >> .env
+        cat > config.yaml << EOF
+        base_url: https://glowing-train-pjqg4gx9v9w53r99w-8081.app.github.dev/complete
+        dashboard_url: https://glowing-train-pjqg4gx9v9w53r99w-8081.app.github.dev/dashboard
+        smtp:
+          host: smtp.gmail.com
+          port: 465
+          user: dadae5th@gmail.com
+          pass: kptwwtdbavjgajly
+          sender_name: 해야할일 알림
+          sender_email: dadae5th@gmail.com
+        secret: gBckLh5s3CSP5VIu6TPi0f1aic6tofQ9EFgrcwf24W1Zl4B2
+        EOF
         
     - name: Initialize database and sample data
       run: |
@@ -103,7 +103,7 @@ jobs:
         
     - name: Send daily emails
       run: |
-        python send_digest_supabase.py
+        python digest.py
         
     - name: Log completion
       run: |
