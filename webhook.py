@@ -389,7 +389,7 @@ def complete_task(token: str, next: Optional[str] = None, request: Request = Non
 
 @app.post("/complete-tasks")
 async def complete_multiple_tasks(request: Request):
-    """이메일 폼에서 다중 업무 완료 처리"""
+    """이메일 폼에서 다중 업무 완료 처리 (SQLite 우선)"""
     try:
         form_data = await request.form()
         task_tokens = form_data.getlist("task")  # 체크박스에서 선택된 모든 토큰
@@ -405,26 +405,61 @@ async def complete_multiple_tasks(request: Request):
         
         for token in task_tokens:
             try:
-                # Supabase로 업무 완료 처리
-                task = supabase_manager.get_task_by_token(token)
-                if task and supabase_manager.mark_task_completed_by_token(token):
-                    completed_tasks.append(task['title'])
-                    
-                    # 상세 완료 기록 저장
-                    completion_data = {
-                        'task_id': task['id'],
-                        'completed_at': supabase_manager.kst_now().isoformat(),
-                        'completion_method': 'email',
-                        'user_agent': user_agent,
-                        'ip_address': client_ip,
-                        'notes': f"이메일 폼을 통한 일괄 완료"
-                    }
-                    supabase_manager.supabase.table('completion_logs').insert(completion_data).execute()
-                    logger.info(f"✅ 완료: {task['title']}")
-                else:
-                    failed_tokens.append(token)
-                    logger.warning(f"⚠️ 완료 실패: 토큰 {token}")
-                    
+                # SQLite 우선 처리
+                if USE_SQLITE_FIRST:
+                    with get_sqlite_conn() as conn:
+                        # 토큰으로 업무 조회
+                        task = conn.execute("""
+                            SELECT * FROM tasks 
+                            WHERE id IN (
+                                SELECT task_id FROM task_tokens 
+                                WHERE token = ? AND expires_at > datetime('now')
+                            ) AND status = 'pending'
+                        """, (token,)).fetchone()
+                        
+                        if task:
+                            # 업무 완료 처리
+                            conn.execute("""
+                                UPDATE tasks 
+                                SET status = 'done', 
+                                    last_completed_at = datetime('now', 'localtime')
+                                WHERE id = ?
+                            """, (task['id'],))
+                            
+                            # 완료 로그 저장
+                            conn.execute("""
+                                INSERT INTO completion_logs 
+                                (task_id, completed_at, completion_method, user_agent, ip_address, notes)
+                                VALUES (?, datetime('now', 'localtime'), 'email', ?, ?, ?)
+                            """, (task['id'], user_agent, client_ip, "이메일 폼을 통한 일괄 완료"))
+                            
+                            completed_tasks.append(task['title'])
+                            logger.info(f"✅ SQLite 완료: {task['title']}")
+                        else:
+                            failed_tokens.append(token)
+                            logger.warning(f"⚠️ SQLite 완료 실패: 토큰 {token}")
+                
+                # Supabase 백업 처리 (SQLite 실패 시)
+                elif supabase_manager and len(completed_tasks) == 0:
+                    task = supabase_manager.get_task_by_token(token)
+                    if task and supabase_manager.mark_task_completed_by_token(token):
+                        completed_tasks.append(task['title'])
+                        
+                        # 상세 완료 기록 저장
+                        completion_data = {
+                            'task_id': task['id'],
+                            'completed_at': supabase_manager.kst_now().isoformat(),
+                            'completion_method': 'email',
+                            'user_agent': user_agent,
+                            'ip_address': client_ip,
+                            'notes': f"이메일 폼을 통한 일괄 완료"
+                        }
+                        supabase_manager.supabase.table('completion_logs').insert(completion_data).execute()
+                        logger.info(f"✅ Supabase 완료: {task['title']}")
+                    else:
+                        failed_tokens.append(token)
+                        logger.warning(f"⚠️ Supabase 완료 실패: 토큰 {token}")
+                        
             except Exception as e:
                 failed_tokens.append(token)
                 logger.error(f"❌ 토큰 처리 오류 {token}: {e}")
