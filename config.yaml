@@ -1,5 +1,5 @@
-base_url: http://localhost:8003
-dashboard_url: http://localhost:8003/dashboard
+base_url: https://glowing-train-pjqg4gx9v9w53r99w-8081.app.github.dev/complete
+dashboard_url: https://glowing-train-pjqg4gx9v9w53r99w-8081.app.github.dev/dashboard
 smtp:
   host: smtp.gmail.com
   port: 465
