@@ -33,7 +33,7 @@ jobs:
       run: |
         # Create config.yaml with correct port (8080)
         cat > config.yaml << EOF
-        base_url: https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev/complete
+        base_url: https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev
         dashboard_url: https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev/dashboard
         smtp:
           host: smtp.gmail.com
@@ -56,7 +56,7 @@ jobs:
         SMTP_PASS=${SMTP_PASS}
         SMTP_SENDER_NAME=해야할일 알림
         SMTP_SENDER_EMAIL=dadae5th@gmail.com
-        BASE_URL=https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev/complete
+        BASE_URL=https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev
         DASHBOARD_URL=https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev/dashboard
         SECRET=gBckLh5s3CSP5VIu6TPi0f1aic6tofQ9EFgrcwf24W1Zl4B2
         EOF
