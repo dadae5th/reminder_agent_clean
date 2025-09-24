@@ -20,8 +20,8 @@ def get_sqlite_conn():
     conn.row_factory = sqlite3.Row
     try:
         yield conn
-        conn.commit()
-    finally:
+        conn.c        # 대시보드로 리다이렉트
+        return RedirectResponse(url="/dashboard", status_code=303)   finally:
         conn.close()
 
 # Supabase는 선택적으로만 사용
@@ -365,11 +365,8 @@ def complete_task(token: str, next: Optional[str] = None, request: Request = Non
                 )
                 logger.info(f"✅ 업무 완료: {task['title']} (ID: {task['id']})")
                 
-                # 대시보드로 리다이렉트 (절대 URL 사용)
-                base_url = str(request.base_url).rstrip("/") if request else "https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev"
-                dashboard_url = f"{base_url}/dashboard"
-                print(f"🔄 개별 완료 리다이렉트: {dashboard_url}")
-                return RedirectResponse(url=dashboard_url, status_code=303)
+                # 대시보드로 리다이렉트
+                return RedirectResponse(url="/dashboard", status_code=303)
             else:
                 logger.warning(f"⚠️ 업무 완료 실패: 토큰 {token}")
                 base_url = str(request.base_url).rstrip("/") if request else "https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev"
