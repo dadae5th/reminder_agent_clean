@@ -606,29 +606,16 @@ async def complete_multiple_tasks(request: Request):
         print(f"🎉 처리 완료: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
         logger.info(f"🎉 완료된 업무: {len(completed_tasks)}개, 실패: {len(failed_tokens)}개")
         
-        # 개별 완료와 동일한 단순한 리다이렉트 로직
-        print(f"🔄 대시보드로 리다이렉트 (개별 완료와 동일한 로직)")
-        logger.info(f"🔄 대시보드로 리다이렉트: /dashboard")
-        return RedirectResponse(url="/dashboard", status_code=303)
+        # Request 객체에서 base URL 가져오기 (개별 완료와 완전히 동일한 방식)
+        base_url = str(request.base_url).rstrip("/")
+        dashboard_url = f"{base_url}/dashboard"
         
-        # 리다이렉트 URL이 없으면 결과 페이지 표시
-        success_msg = f"완료된 업무: {', '.join(completed_tasks)}" if completed_tasks else ""
-        fail_msg = f"실패한 업무: {len(failed_tokens)}개" if failed_tokens else ""
+        print(f"🔗 Base URL: {base_url}")
+        print(f"🔗 Dashboard URL: {dashboard_url}")
+        print(f"� 대시보드로 리다이렉트 (개별 완료와 동일한 로직)")
+        logger.info(f"� 대시보드로 리다이렉트: {dashboard_url}")
         
-        print(f"📄 결과 페이지 생성 중...")
-        logger.info(f"📄 결과 페이지 표시: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
-        
-        response_html = f"""
-            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h2>📋 업무 처리 결과</h2>
-                {f'<p style="color: green;">✅ {success_msg}</p>' if success_msg else ''}
-                {f'<p style="color: red;">❌ {fail_msg}</p>' if fail_msg else ''}
-                <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
-            </body></html>
-        """
-        
-        print(f"📄 HTML 응답 준비 완료")
-        return HTMLResponse(response_html)
+        return RedirectResponse(url=dashboard_url, status_code=303)
         
     except Exception as e:
         logger.error(f"❌ 다중 업무 완료 처리 오류: {e}")
