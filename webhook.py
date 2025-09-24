@@ -415,25 +415,98 @@ async def complete_tasks_get():
         <title>업무 완료 처리</title>
         <meta charset="utf-8">
         <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .message { background: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .error { background: #ffe6e6; }
-            a { color: #007bff; text-decoration: none; }
-            a:hover { text-decoration: underline; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                text-align: center; 
+                padding: 50px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                min-height: 100vh;
+                margin: 0;
+            }
+            .container {
+                background: rgba(255, 255, 255, 0.95);
+                color: #333;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            .message { 
+                background: #e3f2fd; 
+                padding: 25px; 
+                border-radius: 10px; 
+                margin: 25px 0;
+                border-left: 5px solid #2196f3;
+            }
+            .error { 
+                background: #ffebee; 
+                border-left-color: #f44336;
+            }
+            .success {
+                background: #e8f5e8;
+                border-left-color: #4caf50;
+            }
+            a { 
+                color: #1976d2; 
+                text-decoration: none; 
+                font-weight: bold;
+            }
+            a:hover { 
+                text-decoration: underline; 
+                color: #0d47a1;
+            }
+            .btn {
+                display: inline-block;
+                padding: 12px 24px;
+                margin: 10px;
+                background: #2196f3;
+                color: white;
+                border-radius: 6px;
+                text-decoration: none;
+                transition: background 0.3s;
+            }
+            .btn:hover {
+                background: #1976d2;
+                color: white;
+                text-decoration: none;
+            }
+            .icon { font-size: 48px; margin-bottom: 20px; }
         </style>
     </head>
     <body>
-        <h2>⚠️ 잘못된 접근 방식</h2>
-        <div class="message error">
-            <p>이 페이지는 이메일의 "선택한 업무 모두 완료" 버튼을 통해서만 접근할 수 있습니다.</p>
-            <p>직접 URL을 입력해서는 접근할 수 없습니다.</p>
-        </div>
-        <div class="message">
-            <p>📧 이메일에서 전송된 완료 버튼을 클릭해주세요.</p>
-            <p>또는 <a href="/dashboard">📊 대시보드</a>에서 개별적으로 업무를 완료하실 수 있습니다.</p>
-        </div>
-        <div>
-            <p><a href="/test-complete-tasks">🧪 테스트 페이지</a> | <a href="/dashboard">📊 대시보드</a></p>
+        <div class="container">
+            <div class="icon">📋</div>
+            <h2>업무 완료 처리 안내</h2>
+            
+            <div class="message error">
+                <h3>⚠️ 잘못된 접근 방식입니다</h3>
+                <p>이 페이지는 <strong>이메일의 "선택한 업무 모두 완료" 버튼</strong>을 통해서만 접근할 수 있습니다.</p>
+                <p>직접 URL을 입력해서는 접근할 수 없습니다.</p>
+            </div>
+            
+            <div class="message">
+                <h3>📧 올바른 사용 방법</h3>
+                <p>1. 이메일에서 완료할 업무들을 <strong>체크박스로 선택</strong>하세요</p>
+                <p>2. <strong>"선택한 업무 모두 완료"</strong> 버튼을 클릭하세요</p>
+                <p>3. 자동으로 대시보드로 이동됩니다</p>
+            </div>
+            
+            <div class="message success">
+                <h3>� 다른 방법</h3>
+                <p>개별 업무 완료는 각 업무의 "개별 완료" 버튼을 사용하세요</p>
+                <p>전체 업무 현황은 대시보드에서 확인할 수 있습니다</p>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <a href="/dashboard" class="btn">📊 대시보드로 이동</a>
+                <a href="/test-complete-tasks" class="btn">🧪 테스트 페이지</a>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
+                <p>문제가 계속 발생하면 이메일을 다시 받아보거나 개별 완료 버튼을 사용해주세요.</p>
+            </div>
         </div>
     </body>
     </html>
