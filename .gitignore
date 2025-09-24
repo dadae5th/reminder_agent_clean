@@ -42,6 +42,7 @@ node_modules/
 
 # Log files
 *.log
+server.log
 *.sqlite3
 
 # Test files and temporary files
