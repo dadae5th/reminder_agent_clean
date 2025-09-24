@@ -606,10 +606,29 @@ async def complete_multiple_tasks(request: Request):
         print(f"🎉 처리 완료: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
         logger.info(f"🎉 완료된 업무: {len(completed_tasks)}개, 실패: {len(failed_tokens)}개")
         
-        # 대시보드로 리다이렉트
-        target = _cfg().get("dashboard_url")
+        # 대시보드로 리다이렉트 - 더 견고한 로직
+        cfg = _cfg()
+        print(f"📋 Config 데이터: {cfg}")
+        logger.info(f"📋 Config 데이터: {cfg}")
+        
+        target = cfg.get("dashboard_url")  
         print(f"🔗 리다이렉트 대상: {target}")
         logger.info(f"🔗 리다이렉트 대상: {target}")
+        
+        # 대체 URL 옵션들
+        if not target:
+            target = cfg.get("base_url")
+            if target:
+                target = target.rstrip('/') + '/dashboard'
+                print(f"🔄 대체 URL 생성: {target}")
+                logger.info(f"🔄 대체 URL 생성: {target}")
+        
+        # 최종 대체: 환경변수 또는 하드코딩된 URL
+        if not target:
+            import os
+            target = os.environ.get("DASHBOARD_URL") or "https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev/dashboard"
+            print(f"🔄 환경변수/기본 URL 사용: {target}")
+            logger.info(f"🔄 환경변수/기본 URL 사용: {target}")
         
         if target:
             print(f"🔄 대시보드로 리다이렉트 실행: {target}")
