@@ -404,17 +404,72 @@ def test_complete_tasks():
         </body></html>
     """)
 
+@app.get("/complete-tasks")
+async def complete_tasks_get():
+    """GET 방식으로 접근할 때 안내 페이지 표시"""
+    print("ℹ️ GET /complete-tasks 접근 - 안내 페이지 표시")
+    
+    html_content = """
+    <html>
+    <head>
+        <title>업무 완료 처리</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .message { background: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .error { background: #ffe6e6; }
+            a { color: #007bff; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <h2>⚠️ 잘못된 접근 방식</h2>
+        <div class="message error">
+            <p>이 페이지는 이메일의 "선택한 업무 모두 완료" 버튼을 통해서만 접근할 수 있습니다.</p>
+            <p>직접 URL을 입력해서는 접근할 수 없습니다.</p>
+        </div>
+        <div class="message">
+            <p>📧 이메일에서 전송된 완료 버튼을 클릭해주세요.</p>
+            <p>또는 <a href="/dashboard">📊 대시보드</a>에서 개별적으로 업무를 완료하실 수 있습니다.</p>
+        </div>
+        <div>
+            <p><a href="/test-complete-tasks">🧪 테스트 페이지</a> | <a href="/dashboard">📊 대시보드</a></p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(html_content)
+
 @app.post("/complete-tasks")
 async def complete_multiple_tasks(request: Request):
     """이메일 폼에서 다중 업무 완료 처리 (SQLite 우선)"""
+    
+    print("🚀 /complete-tasks 엔드포인트 시작")  # 기본 print도 추가
+    logger.info("🚀 /complete-tasks 엔드포인트 진입")
+    
     try:
+        print("📝 Form 데이터 파싱 시작")
         form_data = await request.form()
         task_tokens = form_data.getlist("task")  # 체크박스에서 선택된 모든 토큰
         
+        print(f"📋 받은 토큰 개수: {len(task_tokens)}")
         logger.info(f"🔍 받은 Form 데이터: {dict(form_data)}")
         logger.info(f"📝 다중 업무 완료 요청: {len(task_tokens)}개 토큰")
         for i, token in enumerate(task_tokens):
-            logger.info(f"  토큰 {i+1}: {token[:10]}...")
+            print(f"  토큰 {i+1}: {token[:15]}...")
+            logger.info(f"  토큰 {i+1}: {token[:15]}...")
+        
+        if not task_tokens:
+            print("⚠️ 선택된 토큰이 없음")
+            logger.warning("⚠️ 선택된 토큰이 없음")
+            return HTMLResponse("""
+                <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                    <h2>⚠️ 선택된 업무가 없습니다</h2>
+                    <p>업무를 선택한 후 다시 시도해주세요.</p>
+                    <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
+                </body></html>
+            """)
         
         completed_tasks = []
         failed_tokens = []
@@ -475,13 +530,16 @@ async def complete_multiple_tasks(request: Request):
                 failed_tokens.append(token)
                 logger.error(f"❌ 토큰 처리 오류 {token}: {e}")
         
+        print(f"🎉 처리 완료: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
         logger.info(f"🎉 완료된 업무: {len(completed_tasks)}개, 실패: {len(failed_tokens)}개")
         
         # 대시보드로 리다이렉트
         target = _cfg().get("dashboard_url")
+        print(f"🔗 리다이렉트 대상: {target}")
         logger.info(f"🔗 리다이렉트 대상: {target}")
         
         if target:
+            print(f"🔄 대시보드로 리다이렉트 실행: {target}")
             logger.info(f"🔄 대시보드로 리다이렉트: {target}")
             return RedirectResponse(url=target, status_code=303)
         
@@ -489,6 +547,7 @@ async def complete_multiple_tasks(request: Request):
         success_msg = f"완료된 업무: {', '.join(completed_tasks)}" if completed_tasks else ""
         fail_msg = f"실패한 업무: {len(failed_tokens)}개" if failed_tokens else ""
         
+        print(f"📄 결과 페이지 생성 중...")
         logger.info(f"📄 결과 페이지 표시: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
         
         response_html = f"""
@@ -500,6 +559,7 @@ async def complete_multiple_tasks(request: Request):
             </body></html>
         """
         
+        print(f"📄 HTML 응답 준비 완료")
         return HTMLResponse(response_html)
         
     except Exception as e:
