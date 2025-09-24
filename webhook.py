@@ -387,6 +387,23 @@ def complete_task(token: str, next: Optional[str] = None, request: Request = Non
             </body></html>
         """, status_code=500)
 
+@app.get("/test-complete-tasks")
+def test_complete_tasks():
+    """다중 완료 기능 테스트"""
+    return HTMLResponse("""
+        <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>🧪 다중 완료 기능 테스트</h2>
+            <form action="/complete-tasks" method="post">
+                <p>테스트용 체크박스:</p>
+                <input type="checkbox" name="task" value="test-token-1" checked> 테스트 업무 1<br>
+                <input type="checkbox" name="task" value="test-token-2" checked> 테스트 업무 2<br>
+                <br>
+                <input type="submit" value="테스트 완료" style="padding:8px 16px;">
+            </form>
+            <p><a href="/dashboard">대시보드로 이동</a></p>
+        </body></html>
+    """)
+
 @app.post("/complete-tasks")
 async def complete_multiple_tasks(request: Request):
     """이메일 폼에서 다중 업무 완료 처리 (SQLite 우선)"""
@@ -491,11 +508,17 @@ async def complete_multiple_tasks(request: Request):
         
     except Exception as e:
         logger.error(f"❌ 다중 업무 완료 처리 오류: {e}")
+        logger.error(f"❌ 오류 상세: {str(e)}")
+        import traceback
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        
         return HTMLResponse(f"""
             <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
                 <h2>❌ 처리 오류</h2>
-                <p>업무 완료 처리 중 오류가 발생했습니다: {str(e)}</p>
+                <p>업무 완료 처리 중 오류가 발생했습니다:</p>
+                <p style="color: red;">{str(e)}</p>
                 <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
+                <p><a href="/test-complete-tasks" style="color: #007bff;">🧪 테스트 페이지</a></p>
             </body></html>
         """, status_code=500)
 
