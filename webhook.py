@@ -416,14 +416,6 @@ async def complete_multiple_tasks(request: Request):
         for i, token in enumerate(task_tokens):
             logger.info(f"  토큰 {i+1}: {token[:10]}...")
         
-        # 클라이언트 정보 수집
-        try:
-            client_ip = str(getattr(request.client, 'host', 'unknown')) if hasattr(request, 'client') and request.client else 'unknown'
-        except:
-            client_ip = 'unknown'
-            
-        user_agent = request.headers.get('user-agent', 'unknown')
-        
         completed_tasks = []
         failed_tokens = []
         
@@ -469,8 +461,8 @@ async def complete_multiple_tasks(request: Request):
                             'task_id': task['id'],
                             'completed_at': supabase_manager.kst_now().isoformat(),
                             'completion_method': 'email',
-                            'user_agent': user_agent,
-                            'ip_address': client_ip,
+                            'user_agent': 'unknown',
+                            'ip_address': 'unknown',
                             'notes': f"이메일 폼을 통한 일괄 완료"
                         }
                         supabase_manager.supabase.table('completion_logs').insert(completion_data).execute()
