@@ -20,8 +20,8 @@ def get_sqlite_conn():
     conn.row_factory = sqlite3.Row
     try:
         yield conn
-        conn.c        # 대시보드로 리다이렉트
-        return RedirectResponse(url="/dashboard", status_code=303)   finally:
+        conn.commit()
+    finally:
         conn.close()
 
 # Supabase는 선택적으로만 사용
@@ -369,25 +369,21 @@ def complete_task(token: str, next: Optional[str] = None, request: Request = Non
                 return RedirectResponse(url="/dashboard", status_code=303)
             else:
                 logger.warning(f"⚠️ 업무 완료 실패: 토큰 {token}")
-                base_url = str(request.base_url).rstrip("/") if request else "https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev"
-                dashboard_url = f"{base_url}/dashboard"
                 return HTMLResponse(f"""
                     <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
                         <h2>⚠️ 처리할 수 없습니다</h2>
                         <p>이미 완료되었거나 토큰이 유효하지 않습니다.</p>
-                        <p><a href="{dashboard_url}" style="color: #007bff;">📊 대시보드 보기</a></p>
+                        <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
                     </body></html>
                 """, status_code=400)
             
     except Exception as e:
         logger.error(f"❌ 업무 완료 처리 오류: {e}")
-        base_url = str(request.base_url).rstrip("/") if request else "https://glowing-train-pjqg4gx9v9w53r99w-8080.app.github.dev"
-        dashboard_url = f"{base_url}/dashboard"
         return HTMLResponse(f"""
             <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
                 <h2>❌ 오류 발생</h2>
                 <p>업무 완료 처리 중 오류가 발생했습니다: {str(e)}</p>
-                <p><a href="{dashboard_url}" style="color: #007bff;">📊 대시보드 보기</a></p>
+                <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
             </body></html>
         """, status_code=500)
 
