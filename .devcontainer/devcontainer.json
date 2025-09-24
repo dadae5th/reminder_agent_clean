@@ -21,15 +21,11 @@
       }
     }
   },
-  "forwardPorts": [8080, 8003],
+  "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {
       "label": "Webhook Server",
       "onAutoForward": "notify"
-    },
-    "8003": {
-      "label": "Local Server", 
-      "onAutoForward": "silent"
     }
   },
   "postCreateCommand": "pip install -r requirements.txt",

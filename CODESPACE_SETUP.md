@@ -48,7 +48,7 @@ python webhook.py
 ## 5단계: 포트 공개 설정
 
 1. Codespace 하단의 "PORTS" 탭 클릭
-2. 포트 8003 찾기
+2. 포트 8080 찾기
 3. "Visibility" 열에서 "Public" 선택
 4. 생성된 URL 복사 (예: https://psychic-space-disco-abc123.githubpreview.dev)
 

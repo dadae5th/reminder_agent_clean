@@ -199,7 +199,7 @@ if __name__ == "__main__":
         
         if success:
             print("\n🎉 업무 데이터 가져오기가 완료되었습니다!")
-            print("   - 웹 대시보드에서 확인하세요: http://localhost:8003/dashboard")
+            print("   - 웹 대시보드에서 확인하세요: http://localhost:8080/dashboard")
         else:
             print("\n❌ 데이터 가져오기에 실패했습니다.")
     else:

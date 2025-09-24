@@ -72,8 +72,8 @@ SUPABASE_SERVICE_KEY=your-service-role-key
 
 **`config.yaml` 파일 수정:**
 ```yaml
-base_url: http://localhost:8003
-dashboard_url: http://localhost:8003/dashboard
+base_url: http://localhost:8080
+dashboard_url: http://localhost:8080/dashboard
 smtp:
   host: smtp.gmail.com
   port: 465
@@ -101,7 +101,7 @@ python migrate_to_supabase.py
 run_server.bat
 
 # 또는 직접 실행
-python -m uvicorn webhook:app --host 0.0.0.0 --port 8003
+python -m uvicorn webhook:app --host 0.0.0.0 --port 8080
 ```
 
 ### 2. 이메일 발송 테스트
@@ -116,9 +116,9 @@ python digest.py
 ## 📊 대시보드 및 API
 
 ### 웹 인터페이스
-- **대시보드**: http://localhost:8003/dashboard
-- **이메일 테스트**: http://localhost:8003/send-test-email
-- **서버 상태**: http://localhost:8003/health
+- **대시보드**: http://localhost:8080/dashboard
+- **이메일 테스트**: http://localhost:8080/send-test-email
+- **서버 상태**: http://localhost:8080/health
 
 ### REST API 엔드포인트
 - `GET /api/stats` - 업무 통계
@@ -178,8 +178,8 @@ python -c "from supabase_client import supabase_manager; print(supabase_manager.
 3. 방화벽 포트 465 허용
 
 ### 대시보드 접속 불가
-1. 서버 실행 상태 확인: http://localhost:8003/health
-2. 포트 8003 사용 여부 확인
+1. 서버 실행 상태 확인: http://localhost:8080/health
+2. 포트 8080 사용 여부 확인
 3. Supabase 연결 상태 확인
 
 ## 🚀 프로덕션 배포

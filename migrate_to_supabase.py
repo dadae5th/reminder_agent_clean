@@ -176,9 +176,9 @@ def main():
         print(f"   - 완료 업무: {final_stats['completed_tasks']}개")
         print(f"   - 진행 중: {final_stats['pending_tasks']}개")
         print("\n🔗 다음 단계:")
-        print("1. 서버 실행: python -m uvicorn webhook:app --host 0.0.0.0 --port 8003")
-        print("2. 대시보드 확인: http://localhost:8003/dashboard")
-        print("3. 이메일 테스트: http://localhost:8003/send-test-email")
+        print("1. 서버 실행: python -m uvicorn webhook:app --host 0.0.0.0 --port 8080")
+        print("2. 대시보드 확인: http://localhost:8080/dashboard")
+        print("3. 이메일 테스트: http://localhost:8080/send-test-email")
         
     except Exception as e:
         print(f"❌ 마이그레이션 오류: {e}")

@@ -54,7 +54,7 @@ print('Database schema created')
 "
 
 # 포트 설정
-EXPOSE 8003
+EXPOSE 8080
 
 # 웹서버 시작
-CMD ["uvicorn", "webhook:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "webhook:app", "--host", "0.0.0.0", "--port", "8080"]

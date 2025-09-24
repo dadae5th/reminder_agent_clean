@@ -104,7 +104,7 @@ def add_task():
         print(f"   - 제목: {title}")
         print(f"   - 담당자: {assignee} ({email})")
         print(f"   - 주기: {frequency}")
-        print(f"   - 완료 링크: http://localhost:8003/complete?token={token}")
+        print(f"   - 완료 링크: http://localhost:8080/complete?token={token}")
         
         return True
 
@@ -258,8 +258,8 @@ def main_menu():
             show_completion_stats()
         elif choice == '6':
             print("\n🌐 웹 대시보드:")
-            print("   - 대시보드: http://localhost:8003/dashboard")
-            print("   - 서버 실행: python -m uvicorn webhook:app --host 0.0.0.0 --port 8003")
+            print("   - 대시보드: http://localhost:8080/dashboard")
+            print("   - 서버 실행: python -m uvicorn webhook:app --host 0.0.0.0 --port 8080")
         elif choice == '0':
             print("👋 업무 관리 도구를 종료합니다.")
             break
