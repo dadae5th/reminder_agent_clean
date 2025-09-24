@@ -394,17 +394,22 @@ async def complete_multiple_tasks(request: Request):
         form_data = await request.form()
         task_tokens = form_data.getlist("task")  # 체크박스에서 선택된 모든 토큰
         
+        logger.info(f"🔍 받은 Form 데이터: {dict(form_data)}")
+        logger.info(f"📝 다중 업무 완료 요청: {len(task_tokens)}개 토큰")
+        for i, token in enumerate(task_tokens):
+            logger.info(f"  토큰 {i+1}: {token[:10]}...")
+        
         # 클라이언트 정보 수집
         client_ip = getattr(request, 'client', {}).get('host', 'unknown')
         user_agent = request.headers.get('user-agent', 'unknown')
-        
-        logger.info(f"📝 다중 업무 완료 요청: {len(task_tokens)}개 토큰")
         
         completed_tasks = []
         failed_tokens = []
         
         for token in task_tokens:
             try:
+                logger.info(f"🔍 처리 중인 토큰: {token[:10]}...")
+                
                 # SQLite 우선 처리
                 if USE_SQLITE_FIRST:
                     with get_sqlite_conn() as conn:
@@ -415,6 +420,8 @@ async def complete_multiple_tasks(request: Request):
                         """, (token,)).fetchone()
                         
                         if task:
+                            logger.info(f"✅ 업무 발견: {task['title']}")
+                            
                             # 업무 완료 처리
                             conn.execute("""
                                 UPDATE tasks 
@@ -428,7 +435,7 @@ async def complete_multiple_tasks(request: Request):
                             logger.info(f"✅ SQLite 완료: {task['title']}")
                         else:
                             failed_tokens.append(token)
-                            logger.warning(f"⚠️ SQLite 완료 실패: 토큰 {token}")
+                            logger.warning(f"⚠️ SQLite 완료 실패: 토큰 {token[:10]}... (업무 없음 또는 이미 완료됨)")
                 
                 # Supabase 백업 처리 (SQLite 실패 시)
                 elif supabase_manager and len(completed_tasks) == 0:
@@ -459,21 +466,28 @@ async def complete_multiple_tasks(request: Request):
         
         # 대시보드로 리다이렉트
         target = _cfg().get("dashboard_url")
+        logger.info(f"🔗 리다이렉트 대상: {target}")
+        
         if target:
+            logger.info(f"🔄 대시보드로 리다이렉트: {target}")
             return RedirectResponse(url=target, status_code=303)
         
         # 리다이렉트 URL이 없으면 결과 페이지 표시
         success_msg = f"완료된 업무: {', '.join(completed_tasks)}" if completed_tasks else ""
         fail_msg = f"실패한 업무: {len(failed_tokens)}개" if failed_tokens else ""
         
-        return HTMLResponse(f"""
+        logger.info(f"📄 결과 페이지 표시: 성공 {len(completed_tasks)}개, 실패 {len(failed_tokens)}개")
+        
+        response_html = f"""
             <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
                 <h2>📋 업무 처리 결과</h2>
                 {f'<p style="color: green;">✅ {success_msg}</p>' if success_msg else ''}
                 {f'<p style="color: red;">❌ {fail_msg}</p>' if fail_msg else ''}
                 <p><a href="/dashboard" style="color: #007bff;">📊 대시보드 보기</a></p>
             </body></html>
-        """)
+        """
+        
+        return HTMLResponse(response_html)
         
     except Exception as e:
         logger.error(f"❌ 다중 업무 완료 처리 오류: {e}")
