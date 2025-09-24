@@ -615,7 +615,7 @@ async def complete_multiple_tasks(request: Request):
         print(f"� 대시보드로 리다이렉트 (개별 완료와 동일한 로직)")
         logger.info(f"� 대시보드로 리다이렉트: {dashboard_url}")
         
-        return RedirectResponse(url=dashboard_url, status_code=303)
+        return RedirectResponse(url="/dashboard", status_code=303)
         
     except Exception as e:
         logger.error(f"❌ 다중 업무 완료 처리 오류: {e}")
