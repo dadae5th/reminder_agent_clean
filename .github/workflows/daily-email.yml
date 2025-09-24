@@ -103,7 +103,7 @@ jobs:
         
     - name: Send daily emails
       run: |
-        python digest.py
+        python send_digest_supabase.py
         
     - name: Log completion
       run: |
