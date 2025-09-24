@@ -1,15 +1,16 @@
-name: Deploy Webhook Server to Railway
+name: Deploy Webhook Server to Railway (DISABLED)
 
+# Railway 배포 비활성화 - GitHub Codespaces 사용 중
 on:
-  push:
-    branches: [ main, automation-system ]
-    paths:
-      - 'webhook.py'
-      - 'requirements.txt'
-      - 'railway.json'
-      - 'Dockerfile'
-      - '.github/workflows/deploy-webhook.yml'
-  workflow_dispatch: # 수동 실행 가능
+  # push:
+  #   branches: [ main, automation-system ]
+  #   paths:
+  #     - 'webhook.py'
+  #     - 'requirements.txt'
+  #     - 'railway.json'
+  #     - 'Dockerfile'
+  #     - '.github/workflows/deploy-webhook.yml'
+  workflow_dispatch: # 수동 실행만 가능
 
 jobs:
   deploy:
@@ -27,8 +28,8 @@ jobs:
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       run: |
-        # Railway 로그인
-        railway login --token $RAILWAY_TOKEN
+        # Railway 로그인 (새로운 방식)
+        echo "$RAILWAY_TOKEN" | railway auth:login
         
         # 프로젝트에 연결 (기존 프로젝트가 있으면 연결, 없으면 새로 생성)
         railway link --project reminder-webhook || railway new reminder-webhook
@@ -55,7 +56,7 @@ jobs:
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       run: |
-        railway login --token $RAILWAY_TOKEN
+        echo "$RAILWAY_TOKEN" | railway auth:login
         railway status
         echo "🚀 Webhook server deployed successfully!"
         echo "Check your Railway dashboard for the deployment URL"
