@@ -28,38 +28,13 @@ def get_sqlite_conn():
         conn.close()
 
 def _load_cfg():
-    """설정 로드 - 환경변수 우선, config.yaml fallback"""
-    # 환경변수에서 설정 로드 (GitHub Actions용)
-    env_config = {
-        'smtp': {
-            'host': os.getenv('SMTP_HOST'),
-            'port': int(os.getenv('SMTP_PORT', 465)),
-            'user': os.getenv('SMTP_USER'),
-            'pass': os.getenv('SMTP_PASS'),
-            'sender_name': os.getenv('SMTP_SENDER_NAME'),
-            'sender_email': os.getenv('SMTP_SENDER_EMAIL')
-        },
-        'base_url': os.getenv('BASE_URL'),
-        'dashboard_url': os.getenv('DASHBOARD_URL')
-    }
-    
-    # 환경변수가 모두 설정되어 있으면 사용
-    if all([
-        env_config['smtp']['host'],
-        env_config['smtp']['user'], 
-        env_config['smtp']['pass'],
-        env_config['base_url']
-    ]):
-        print("[INFO] 🔧 환경변수에서 설정 로드")
-        return env_config
-    
-    # 아니면 config.yaml 사용
+    """설정 로드 - config.yaml 강제 사용 (환경변수 무시)"""
     print("[INFO] 🔧 config.yaml에서 설정 로드") 
     try:
         with open("config.yaml", "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     except FileNotFoundError:
-        raise Exception("config.yaml 파일이 없고 환경변수도 설정되지 않았습니다.")
+        raise Exception("config.yaml 파일이 없습니다.")
 
 def get_users_and_tasks_from_sqlite():
     """SQLite에서만 사용자와 업무 정보 가져오기 (GitHub Actions용)"""
