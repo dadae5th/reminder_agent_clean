@@ -408,13 +408,10 @@ async def complete_multiple_tasks(request: Request):
                 # SQLite 우선 처리
                 if USE_SQLITE_FIRST:
                     with get_sqlite_conn() as conn:
-                        # 토큰으로 업무 조회
+                        # 토큰으로 업무 조회 (hmac_token 컬럼 사용)
                         task = conn.execute("""
                             SELECT * FROM tasks 
-                            WHERE id IN (
-                                SELECT task_id FROM task_tokens 
-                                WHERE token = ? AND expires_at > datetime('now')
-                            ) AND status = 'pending'
+                            WHERE hmac_token = ? AND status = 'pending'
                         """, (token,)).fetchone()
                         
                         if task:
@@ -422,16 +419,10 @@ async def complete_multiple_tasks(request: Request):
                             conn.execute("""
                                 UPDATE tasks 
                                 SET status = 'done', 
-                                    last_completed_at = datetime('now', 'localtime')
+                                    last_completed_at = datetime('now', 'localtime'),
+                                    updated_at = datetime('now', 'localtime')
                                 WHERE id = ?
                             """, (task['id'],))
-                            
-                            # 완료 로그 저장
-                            conn.execute("""
-                                INSERT INTO completion_logs 
-                                (task_id, completed_at, completion_method, user_agent, ip_address, notes)
-                                VALUES (?, datetime('now', 'localtime'), 'email', ?, ?, ?)
-                            """, (task['id'], user_agent, client_ip, "이메일 폼을 통한 일괄 완료"))
                             
                             completed_tasks.append(task['title'])
                             logger.info(f"✅ SQLite 완료: {task['title']}")
