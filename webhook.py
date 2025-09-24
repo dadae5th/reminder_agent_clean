@@ -730,8 +730,8 @@ def get_all_tasks():
     try:
         with get_sqlite_conn() as conn:
             tasks = conn.execute("""
-                SELECT id, title, assignee_email, frequency, status, created_at, last_completed_at, hmac_token
-                FROM tasks ORDER BY created_at DESC
+                SELECT id, title, assignee_email, frequency, status, last_completed_at, hmac_token, updated_at
+                FROM tasks ORDER BY id DESC
             """).fetchall()
             
             # Row 객체를 dict로 변환
