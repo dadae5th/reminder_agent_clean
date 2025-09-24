@@ -417,7 +417,11 @@ async def complete_multiple_tasks(request: Request):
             logger.info(f"  토큰 {i+1}: {token[:10]}...")
         
         # 클라이언트 정보 수집
-        client_ip = getattr(request, 'client', {}).get('host', 'unknown')
+        try:
+            client_ip = str(getattr(request.client, 'host', 'unknown')) if hasattr(request, 'client') and request.client else 'unknown'
+        except:
+            client_ip = 'unknown'
+            
         user_agent = request.headers.get('user-agent', 'unknown')
         
         completed_tasks = []
