@@ -405,10 +405,41 @@ def test_complete_tasks():
     """)
 
 @app.get("/complete-tasks")
-async def complete_tasks_get():
-    """GET 방식으로 접근할 때 안내 페이지 표시"""
-    print("ℹ️ GET /complete-tasks 접근 - 안내 페이지 표시")
-    
+async def complete_tasks_get(request: Request):
+    """GET 요청으로 받은 토큰들(task=...&task=...)을 처리 후 대시보드로 리다이렉트.
+    토큰이 없으면 안내 페이지를 반환."""
+    # 1) 쿼리에서 토큰 수집
+    tokens = request.query_params.getlist("task") if hasattr(request.query_params, "getlist") else []
+    if tokens:
+        completed, failed = 0, 0
+        for token in tokens:
+            try:
+                with get_sqlite_conn() as conn:
+                    task = conn.execute(
+                        "SELECT * FROM tasks WHERE hmac_token = ? AND status = 'pending'",
+                        (token,)
+                    ).fetchone()
+                    if task:
+                        conn.execute(
+                            """
+                            UPDATE tasks
+                            SET status = 'done',
+                                last_completed_at = datetime('now', 'localtime'),
+                                updated_at = datetime('now', 'localtime')
+                            WHERE id = ?
+                            """,
+                            (task['id'],)
+                        )
+                        completed += 1
+                    else:
+                        failed += 1
+            except Exception as e:
+                logger.error(f"❌ GET 다중 완료 처리 오류 (토큰 {token}): {e}")
+                failed += 1
+        logger.info(f"✅ GET 다중 완료 처리 결과 - 완료: {completed}, 실패: {failed}")
+        return RedirectResponse(url="/dashboard", status_code=303)
+
+    # 2) 토큰 없으면 안내 페이지 표시
     html_content = """
     <html>
     <head>
@@ -440,38 +471,10 @@ async def complete_tasks_get():
                 margin: 25px 0;
                 border-left: 5px solid #2196f3;
             }
-            .error { 
-                background: #ffebee; 
-                border-left-color: #f44336;
-            }
-            .success {
-                background: #e8f5e8;
-                border-left-color: #4caf50;
-            }
-            a { 
-                color: #1976d2; 
-                text-decoration: none; 
-                font-weight: bold;
-            }
-            a:hover { 
-                text-decoration: underline; 
-                color: #0d47a1;
-            }
-            .btn {
-                display: inline-block;
-                padding: 12px 24px;
-                margin: 10px;
-                background: #2196f3;
-                color: white;
-                border-radius: 6px;
-                text-decoration: none;
-                transition: background 0.3s;
-            }
-            .btn:hover {
-                background: #1976d2;
-                color: white;
-                text-decoration: none;
-            }
+            a { color: #1976d2; text-decoration: none; font-weight: bold; }
+            a:hover { text-decoration: underline; color: #0d47a1; }
+            .btn { display: inline-block; padding: 12px 24px; margin: 10px; background: #2196f3; color: white; border-radius: 6px; text-decoration: none; }
+            .btn:hover { background: #1976d2; color: white; text-decoration: none; }
             .icon { font-size: 48px; margin-bottom: 20px; }
         </style>
     </head>
@@ -479,39 +482,17 @@ async def complete_tasks_get():
         <div class="container">
             <div class="icon">📋</div>
             <h2>업무 완료 처리 안내</h2>
-            
-            <div class="message error">
-                <h3>⚠️ 잘못된 접근 방식입니다</h3>
-                <p>이 페이지는 <strong>이메일의 "선택한 업무 모두 완료" 버튼</strong>을 통해서만 접근할 수 있습니다.</p>
-                <p>직접 URL을 입력해서는 접근할 수 없습니다.</p>
-            </div>
-            
             <div class="message">
-                <h3>📧 올바른 사용 방법</h3>
-                <p>1. 이메일에서 완료할 업무들을 <strong>체크박스로 선택</strong>하세요</p>
-                <p>2. <strong>"선택한 업무 모두 완료"</strong> 버튼을 클릭하세요</p>
-                <p>3. 자동으로 대시보드로 이동됩니다</p>
+                <p>이메일의 링크를 통해 접근해주세요.</p>
             </div>
-            
-            <div class="message success">
-                <h3>� 다른 방법</h3>
-                <p>개별 업무 완료는 각 업무의 "개별 완료" 버튼을 사용하세요</p>
-                <p>전체 업무 현황은 대시보드에서 확인할 수 있습니다</p>
-            </div>
-            
             <div style="margin-top: 30px;">
                 <a href="/dashboard" class="btn">📊 대시보드로 이동</a>
                 <a href="/test-complete-tasks" class="btn">🧪 테스트 페이지</a>
-            </div>
-            
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
-                <p>문제가 계속 발생하면 이메일을 다시 받아보거나 개별 완료 버튼을 사용해주세요.</p>
             </div>
         </div>
     </body>
     </html>
     """
-    
     return HTMLResponse(html_content)
 
 @app.post("/complete-tasks")

@@ -40,6 +40,9 @@ def html_for_tasks(tasks, base_url, dashboard_url=None):
             </td>
           </tr>
         """)
+    # GET 링크(메일 클라이언트가 form post를 막는 경우 대비)
+    get_link = f"{base_url}/complete-tasks" + "" + ("".join(["&task="+t.get("hmac_token") if i>0 else "?task="+t.get("hmac_token") for i,t in enumerate(tasks) if t.get("hmac_token")]))
+
     table = f"""
       <form action="{base_url}/complete-tasks" method="post">
         <table style="border-collapse:collapse;width:100%;font-family:Arial,Apple SD Gothic Neo,Malgun Gothic;">
@@ -55,6 +58,9 @@ def html_for_tasks(tasks, base_url, dashboard_url=None):
           <button type="submit" style="padding:8px 16px;border-radius:6px;background:#007bff;color:white;border:none;cursor:pointer;">
             선택한 업무 모두 완료하기
           </button>
+          <div style="margin-top:8px;font-size:12px;color:#666;">
+            메일 앱에서 버튼이 동작하지 않으면 <a href="{get_link}" style="color:#007bff;">여기</a>를 클릭하세요.
+          </div>
         </div>
       </form>
     """
